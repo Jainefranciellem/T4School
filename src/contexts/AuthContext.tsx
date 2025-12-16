@@ -35,12 +35,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     // Check for existing session
-    const storedUser = localStorage.getItem('surfschool_user');
+    const storedUser = localStorage.getItem('T4School_user');
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser));
       } catch {
-        localStorage.removeItem('surfschool_user');
+        localStorage.removeItem('T4School_user');
       }
     }
     setIsLoading(false);
@@ -53,15 +53,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     await new Promise(resolve => setTimeout(resolve, 800));
 
     // Mock authentication - in production, this would call your API
-    if (email === 'admin@surfschool.com' && password === '123456') {
+    if (email === 'admin@T4School.com' && password === '123456') {
       const mockUser: User = {
         id: '1',
-        email: 'admin@surfschool.com',
+        email: 'admin@T4School.com',
         nome: 'Professor Carlos',
         role: 'admin',
       };
       setUser(mockUser);
-      localStorage.setItem('surfschool_user', JSON.stringify(mockUser));
+      localStorage.setItem('T4School_user', JSON.stringify(mockUser));
       setIsLoading(false);
       return { success: true };
     }
@@ -72,7 +72,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('surfschool_user');
+    localStorage.removeItem('T4School_user');
   };
 
   return (

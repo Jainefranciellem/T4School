@@ -66,7 +66,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               </div>
               <div>
                 <h1 className="font-display font-bold text-lg text-sidebar-foreground">
-                  SurfSchool
+                  T4School
                 </h1>
                 <p className="text-xs text-muted-foreground">Sistema de Aulas</p>
               </div>

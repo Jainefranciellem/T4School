@@ -102,7 +102,7 @@ const Login: React.FC = () => {
             <span className="text-3xl">🏄</span>
           </div>
           <h1 className="font-display text-3xl font-bold text-foreground">
-            SurfSchool
+            T4School
           </h1>
           <p className="text-muted-foreground mt-2">
             Sistema de Agendamento de Aulas
@@ -180,7 +180,7 @@ const Login: React.FC = () => {
 
             <div className="mt-6 pt-6 border-t border-border">
               <p className="text-sm text-center text-muted-foreground">
-                <strong>Demo:</strong> admin@surfschool.com / 123456
+                <strong>Demo:</strong> admin@T4School.com / 123456
               </p>
             </div>
           </CardContent>

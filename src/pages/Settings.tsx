@@ -49,7 +49,7 @@ Responda 1 para confirmar ou 2 para informar que não irá.`,
     await new Promise((resolve) => setTimeout(resolve, 1000));
     
     // In production, this would save to the backend
-    localStorage.setItem('surfschool_settings', JSON.stringify({
+    localStorage.setItem('T4School_settings', JSON.stringify({
       integrations,
       notifications,
       templates,
