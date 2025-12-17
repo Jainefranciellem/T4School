@@ -21,9 +21,14 @@ import {
   ArrowRight,
   TrendingUp,
 } from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { AulasService, Aula } from '@/lib/aulas.service';
+import { useToast } from '@/hooks/use-toast';
 
 const Dashboard: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const todaysLessons = getTodaysLessons();
   const upcomingLessons = getUpcomingLessons();
@@ -32,9 +37,20 @@ const Dashboard: React.FC = () => {
     (l) => l.status === 'Agendada' && !l.notificacao_enviada
   );
 
+  const createLessonMutation = useMutation({
+    mutationFn: AulasService.criarAula,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['aulas'] });
+      toast({ title: 'Sucesso', description: 'Aula agendada com sucesso!' });
+      setIsModalOpen(false);
+    },
+    onError: () => {
+      toast({ title: 'Erro', description: 'Erro ao agendar aula.', variant: 'destructive' });
+    }
+  });
+
   const handleCreateLesson = (lessonData: Omit<Lesson, 'id'>) => {
-    console.log('Creating lesson:', lessonData);
-    // In production, this would call the API
+    createLessonMutation.mutate(lessonData);
   };
 
   return (
@@ -207,13 +223,12 @@ const Dashboard: React.FC = () => {
                       </div>
                     </div>
                     <span
-                      className={`text-sm font-bold ${
-                        student.aulas_restantes === 0
+                      className={`text-sm font-bold ${student.aulas_restantes === 0
                           ? 'text-destructive'
                           : student.aulas_restantes <= 2
-                          ? 'text-warning'
-                          : 'text-muted-foreground'
-                      }`}
+                            ? 'text-warning'
+                            : 'text-muted-foreground'
+                        }`}
                     >
                       {student.aulas_restantes} aulas
                     </span>

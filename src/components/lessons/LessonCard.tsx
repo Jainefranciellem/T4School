@@ -32,7 +32,7 @@ export const LessonCard: React.FC<LessonCardProps> = ({
   compact = false,
 }) => {
   const student = getStudentById(lesson.aluno_id);
-  const config = statusConfig[lesson.status];
+  const config = statusConfig[lesson.status] || { variant: 'default' as const, label: lesson.status };
 
   const isPast = new Date(lesson.data) < new Date(new Date().toDateString());
   const canModify = !['Compareceu', 'Faltou', 'Cancelada'].includes(lesson.status);

@@ -1,10 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { LessonCard } from '@/components/lessons/LessonCard';
 import { CreateLessonModal } from '@/components/lessons/CreateLessonModal';
-import { mockLessons, getStudentById, Lesson } from '@/data/mockData';
+import { Lesson } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import {
   ChevronLeft,
@@ -13,9 +12,13 @@ import {
   Calendar as CalendarIcon,
   List,
   Grid3X3,
+  Loader2
 } from 'lucide-react';
-import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, addWeeks, subWeeks } from 'date-fns';
+import { format, addWeeks, subWeeks, startOfWeek, endOfWeek, eachDayOfInterval, isToday, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { AulasService, Aula } from '@/lib/aulas.service';
+import { useToast } from '@/hooks/use-toast';
 
 type ViewMode = 'day' | 'week' | 'month';
 
@@ -25,13 +28,50 @@ const Agenda: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
 
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
   const weekEnd = endOfWeek(currentDate, { weekStartsOn: 0 });
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
+  // Fetch Lessons
+  const { data: lessons = [], isLoading, isError } = useQuery({
+    queryKey: ['aulas'],
+    queryFn: AulasService.listarAulas,
+  });
+
+  // Mutations
+  const createLessonMutation = useMutation({
+    mutationFn: AulasService.criarAula,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['aulas'] });
+      toast({ title: 'Sucesso', description: 'Aula agendada com sucesso!' });
+      setIsModalOpen(false);
+    },
+    onError: () => {
+      toast({ title: 'Erro', description: 'Erro ao agendar aula.', variant: 'destructive' });
+    }
+  });
+
+  const updateLessonMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Aula> }) =>
+      AulasService.atualizarAula(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['aulas'] });
+      toast({ title: 'Sucesso', description: 'Aula atualizada com sucesso!' });
+      setIsModalOpen(false);
+      setSelectedLesson(null);
+    },
+    onError: () => {
+      toast({ title: 'Erro', description: 'Erro ao atualizar aula.', variant: 'destructive' });
+    }
+  });
+
   const getLessonsForDate = (date: Date) => {
     const dateString = format(date, 'yyyy-MM-dd');
-    return mockLessons.filter((l) => l.data === dateString);
+    // Ensure we handle date comparison correctly regardless of time
+    return lessons.filter((l) => l.data === dateString);
   };
 
   const navigateWeek = (direction: 'prev' | 'next') => {
@@ -49,12 +89,13 @@ const Agenda: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleCreateLesson = (lessonData: Omit<Lesson, 'id'>) => {
-    console.log('Creating/updating lesson:', lessonData);
-    setSelectedLesson(null);
+  const handleSaveLesson = (lessonData: Omit<Lesson, 'id'>) => {
+    if (selectedLesson) {
+      updateLessonMutation.mutate({ id: selectedLesson.id, data: lessonData });
+    } else {
+      createLessonMutation.mutate(lessonData);
+    }
   };
-
-  const todayLessons = getLessonsForDate(currentDate);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -66,7 +107,7 @@ const Agenda: React.FC = () => {
             Gerencie todas as aulas agendadas
           </p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)}>
+        <Button onClick={() => { setSelectedLesson(null); setIsModalOpen(true); }}>
           <Plus className="h-4 w-4" />
           Nova Aula
         </Button>
@@ -132,8 +173,22 @@ const Agenda: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex justify-center p-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
+
+      {/* Error State */}
+      {isError && (
+        <div className="text-center p-12 text-destructive">
+          <p>Erro ao carregar aulas. Tente novamente mais tarde.</p>
+        </div>
+      )}
+
       {/* Calendar grid - Week view */}
-      {viewMode === 'week' && (
+      {!isLoading && !isError && viewMode === 'week' && (
         <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
           {weekDays.map((day) => {
             const dayLessons = getLessonsForDate(day);
@@ -192,7 +247,7 @@ const Agenda: React.FC = () => {
       )}
 
       {/* Day view */}
-      {viewMode === 'day' && (
+      {!isLoading && !isError && viewMode === 'day' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Day selector */}
           <Card className="lg:col-span-2">
@@ -222,13 +277,13 @@ const Agenda: React.FC = () => {
             <h2 className="text-xl font-semibold font-display">
               {format(currentDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
             </h2>
-            {todayLessons.length > 0 ? (
-              todayLessons.map((lesson) => (
+            {getLessonsForDate(currentDate).length > 0 ? (
+              getLessonsForDate(currentDate).map((lesson) => (
                 <LessonCard
                   key={lesson.id}
                   lesson={lesson}
                   onEdit={handleEditLesson}
-                  onConfirm={() => console.log('Confirm', lesson.id)}
+                  onConfirm={() => console.log('Confirm', lesson.id)} // Could implement these later
                   onCancel={() => console.log('Cancel', lesson.id)}
                   onReschedule={() => console.log('Reschedule', lesson.id)}
                 />
@@ -270,7 +325,7 @@ const Agenda: React.FC = () => {
           setIsModalOpen(false);
           setSelectedLesson(null);
         }}
-        onSave={handleCreateLesson}
+        onSave={handleSaveLesson}
         editLesson={selectedLesson}
       />
     </div>

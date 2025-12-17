@@ -42,13 +42,13 @@
 
     /* Sidebar - keeping it light/clean or dark for contrast? 
        Let's try a dark sidebar for premium feel as implied by the black "Principal" card in the 3rd image */
-    --sidebar-background: 0 0% 0%;
-    --sidebar-foreground: 50 14% 93%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 240 5% 26%;
     --sidebar-primary: 28 100% 47.6%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 15%;
-    --sidebar-accent-foreground: 50 14% 93%;
-    --sidebar-border: 0 0% 20%;
+    --sidebar-accent: 50 14% 93%;
+    --sidebar-accent-foreground: 28 100% 47.6%;
+    --sidebar-border: 0 0% 90%;
     --sidebar-ring: 28 100% 47.6%;
 
     --shadow-ocean: 0 10px 30px -10px rgba(47, 177, 179, 0.3);
