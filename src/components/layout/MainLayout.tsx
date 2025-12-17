@@ -26,7 +26,7 @@ export const MainLayout: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
-      
+
       <main
         className={cn(
           'min-h-screen transition-all duration-300 lg:ml-64',

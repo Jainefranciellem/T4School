@@ -1,28 +1,62 @@
 const API_URL = 'https://n8n.nexosoftwere.cloud/webhook/97d7b623-3144-4c87-84c4-6ff897ff48ac';
 
-export async function listarAlunos() {
-  const res = await fetch(API_URL);
-  if (!res.ok) throw new Error('Erro ao listar alunos');
-  return res.json();
+export interface Student {
+  id: string;
+  nome: string;
+  telefone: string;
+  email: string;
+  plano: 'mensal' | 'trimestral' | 'avulso';
+  aulas_restantes: number;
+  status: 'Ativo' | 'Inativo';
 }
 
-export async function criarAluno(data: any) {
+export async function listarAlunos(): Promise<Student[]> {
+  try {
+    const res = await fetch("https://n8n.nexosoftwere.cloud/webhook/d376860c-6632-490a-99f1-bad44ac1f309", {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    }
+    );
+
+    if (!res.ok) {
+      throw new Error('Erro ao listar alunos');
+    }
+
+    const data = await res.json();
+
+    // ✅ Garante que sempre seja array
+    if (Array.isArray(data)) {
+      return data;
+    }
+
+    return [];
+  } catch (error) {
+    console.error('Erro ao buscar alunos:', error);
+    return [];
+  }
+}
+
+export async function criarAluno(data: Omit<Student, 'id'>) {
   const res = await fetch(API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify({
+      action: 'create', // Often helpful for single-webhook setups
+      ...data
+    }),
   });
 
   if (!res.ok) throw new Error('Erro ao criar aluno');
   return res.json();
 }
 
-export async function atualizarAluno(id: string, data: any) {
-  const res = await fetch(`${API_URL}/${id}`, {
+export async function atualizarAluno(id: string, data: Partial<Student>) {
+  const res = await fetch(`${API_URL}/${id}`, { // Note: appending ID might not work if n8n doesn't handle route params. 
+    // Usually single webhook handles payload. But keeping as is for now unless we know better.
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-  })
+  });
   if (!res.ok) throw new Error('Erro ao atualizar aluno');
   return res.json();
 }

@@ -12,7 +12,7 @@ const WaveBackground = () => (
   <div className="absolute inset-0 overflow-hidden pointer-events-none">
     {/* Gradient background */}
     <div className="absolute inset-0 gradient-ocean opacity-10" />
-    
+
     {/* Animated waves */}
     <svg
       className="absolute bottom-0 left-0 w-full h-64 md:h-80"
@@ -41,7 +41,7 @@ const Login: React.FC = () => {
   const { isAuthenticated, login, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -53,7 +53,7 @@ const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !password) {
       toast({
         title: 'Campos obrigatórios',
@@ -94,13 +94,13 @@ const Login: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center relative bg-background p-4">
       <WaveBackground />
-      
+
       <div className="w-full max-w-md relative z-10 animate-fade-in">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl gradient-ocean shadow-ocean mb-4">
-            <span className="text-3xl">🏄</span>
-          </div>
+          {/* <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl gradient-ocean shadow-ocean mb-4">
+            <img src="src/assets/logo.png" alt="" />
+          </div> */}
           <h1 className="font-display text-3xl font-bold text-foreground">
             T4School
           </h1>
