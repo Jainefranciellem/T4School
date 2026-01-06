@@ -98,12 +98,9 @@ const Login: React.FC = () => {
       <div className="w-full max-w-md relative z-10 animate-fade-in">
         {/* Logo */}
         <div className="text-center mb-8">
-          {/* <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl gradient-ocean shadow-ocean mb-4">
-            <img src="src/assets/logo.png" alt="" />
-          </div> */}
-          <h1 className="font-display text-3xl font-bold text-foreground">
-            T4School
-          </h1>
+          <div className="inline-flex items-center justify-center w-32 h-32 rounded-2xl bg-primary shadow-ocean mb-4">
+            <img src="src/assets/logo.png" alt="" className='w-32 h-32 object-contain' />
+          </div>
           <p className="text-muted-foreground mt-2">
             Sistema de Agendamento de Aulas
           </p>

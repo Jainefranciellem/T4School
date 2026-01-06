@@ -89,7 +89,7 @@ const Agenda: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleSaveLesson = (lessonData: Omit<Lesson, 'id'>) => {
+  const handleSaveLesson = (lessonData: Lesson) => {
     if (selectedLesson) {
       updateLessonMutation.mutate({ id: selectedLesson.id, data: lessonData });
     } else {

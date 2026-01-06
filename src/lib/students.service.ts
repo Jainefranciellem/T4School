@@ -1,4 +1,12 @@
-const API_URL = 'https://n8n.nexosoftwere.cloud/webhook/97d7b623-3144-4c87-84c4-6ff897ff48ac';
+const API_URL = '';
+
+const API_URLS = {
+  LIST: 'https://n8n.nexosoftwere.cloud/webhook/d376860c-6632-490a-99f1-bad44ac1f309',
+  CREATE: 'https://n8n.nexosoftwere.cloud/webhook/97d7b623-3144-4c87-84c4-6ff897ff48ac',
+  UPDATE: 'https://n8n.nexosoftwere.cloud/webhook/atualizar-aluno',
+  DELETE: 'https://n8n.nexosoftwere.cloud/webhook/PLEASE_REPLACE_WITH_REAL_UUID',
+};
+
 
 export interface Student {
   id: string;
@@ -12,7 +20,7 @@ export interface Student {
 
 export async function listarAlunos(): Promise<Student[]> {
   try {
-    const res = await fetch("https://n8n.nexosoftwere.cloud/webhook/d376860c-6632-490a-99f1-bad44ac1f309", {
+    const res = await fetch(API_URLS.LIST, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     }
@@ -37,7 +45,7 @@ export async function listarAlunos(): Promise<Student[]> {
 }
 
 export async function criarAluno(data: Omit<Student, 'id'>) {
-  const res = await fetch(API_URL, {
+  const res = await fetch(API_URLS.CREATE, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

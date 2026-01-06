@@ -8,7 +8,7 @@ const USE_MOCK_MODE = false;
 const API_URLS = {
     LIST: 'https://n8n.nexosoftwere.cloud/webhook/7df086cf-2d41-46ce-b296-5fe8d41abbd5-lista-aulas',
     CREATE: 'https://n8n.nexosoftwere.cloud/webhook/79ed8092-b85c-4016-921e-5b2d523bbc38-cria-aula',
-    UPDATE: 'https://n8n.nexosoftwere.cloud/webhook/PLEASE_REPLACE_WITH_REAL_UUID',
+    UPDATE: 'https://n8n.nexosoftwere.cloud/webhook/atualizar-aula',
     DELETE: 'https://n8n.nexosoftwere.cloud/webhook/PLEASE_REPLACE_WITH_REAL_UUID',
 };
 
@@ -22,13 +22,6 @@ export const AulasService = {
      * Lista todas as aulas
      */
     listarAulas: async (): Promise<Aula[]> => {
-        // if (USE_MOCK_MODE) {
-        //     console.log('[AulasService] Mock Mode: Listing lessons', localMockLessons);
-        //     // Simulate network delay
-        //     await new Promise(resolve => setTimeout(resolve, 500));
-        //     return localMockLessons;
-        // }
-
         try {
             const res = await fetch(API_URLS.LIST);
             if (!res.ok) throw new Error('Erro ao listar aulas');
@@ -43,20 +36,7 @@ export const AulasService = {
     /**
      * Cria uma nova aula
      */
-    criarAula: async (dadosAula: Omit<Aula, 'id'>): Promise<Aula> => {
-        // if (USE_MOCK_MODE) {
-        //     console.log('[AulasService] Mock Mode: Creating lesson', dadosAula);
-        //     await new Promise(resolve => setTimeout(resolve, 800));
-
-        //     const novaAula: Aula = {
-        //         id: crypto.randomUUID(),
-        //         ...dadosAula
-        //     };
-
-        //     localMockLessons = [...localMockLessons, novaAula];
-        //     return novaAula;
-        // }
-
+    criarAula: async (dadosAula: Aula): Promise<Aula> => {
         try {
             const res = await fetch(API_URLS.CREATE, {
                 method: 'POST',
@@ -76,23 +56,10 @@ export const AulasService = {
      * Atualiza uma aula existente
      */
     atualizarAula: async (id: string, dadosAtualizados: Partial<Aula>): Promise<Aula> => {
-        // if (USE_MOCK_MODE) {
-        //     console.log('[AulasService] Mock Mode: Updating lesson', id, dadosAtualizados);
-        //     await new Promise(resolve => setTimeout(resolve, 600));
-
-        //     const index = localMockLessons.findIndex(a => a.id === id);
-        //     if (index === -1) throw new Error('Aula não encontrada (Mock)');
-
-        //     const aulaAtualizada = { ...localMockLessons[index], ...dadosAtualizados };
-
-        //     localMockLessons = localMockLessons.map(a => a.id === id ? aulaAtualizada : a);
-        //     return aulaAtualizada;
-        // }
-
         try {
             // Note: Adjust URL structure if your n8n expects ID in body vs URL param
             const res = await fetch(`${API_URLS.UPDATE}`, {
-                method: 'PUT',
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id, ...dadosAtualizados }),
             });
@@ -109,13 +76,6 @@ export const AulasService = {
      * Deleta (cancela) uma aula
      */
     deletarAula: async (id: string): Promise<void> => {
-        // if (USE_MOCK_MODE) {
-        //     console.log('[AulasService] Mock Mode: Deleting lesson', id);
-        //     await new Promise(resolve => setTimeout(resolve, 500));
-
-        //     localMockLessons = localMockLessons.filter(a => a.id !== id);
-        //     return;
-        // }
 
         try {
             const res = await fetch(`${API_URLS.DELETE}`, {

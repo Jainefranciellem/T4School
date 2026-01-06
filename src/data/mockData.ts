@@ -183,17 +183,17 @@ export const mockLessons: Lesson[] = [
 
 export const mockPlans: Plan[] = [
   { id: '1', nome: 'Avulso', qtd_aulas: 1, validade_dias: 30, preco: 120 },
-  { id: '2', nome: 'Mensal', qtd_aulas: 4, validade_dias: 30, preco: 400 },
-  { id: '3', nome: 'Trimestral', qtd_aulas: 12, validade_dias: 90, preco: 1000 },
+  { id: '2', nome: 'Mensal', qtd_aulas: 4, validade_dias: 30, preco: 450 },
+  { id: '3', nome: 'Trimestral', qtd_aulas: 10, validade_dias: 90, preco: 850 },
 ];
 
-export const instructors = ['Carlos', 'Bruno', 'Amanda'];
+export const instructors = ['Torquato'];
 
 export const locations = [
-  'Praia de Ponta Negra',
-  'Praia do Meio',
-  'Praia do Forte',
-  'Praia de Genipabu',
+  'Cinelandia',
+  'Bomba',
+  'Cara de Sapo',
+  'Sementeira',
 ];
 
 // Helper function to get student by ID
