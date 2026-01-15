@@ -27,11 +27,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { listarAlunos, criarAluno } from '@/lib/students.service';
+import { listarAlunos, criarAluno, atualizarAluno, excluirAluno, type Student } from '@/lib/students.service';
 import { useToast } from '@/hooks/use-toast';
 import {
   Search,
   Edit,
+  Trash2,
   Calendar,
   MessageCircle,
   Phone,
@@ -40,20 +41,6 @@ import {
   UserPlus,
   Loader2,
 } from 'lucide-react';
-
-/* =======================
-   TIPAGEM
-======================= */
-
-export interface Student {
-  id: string;
-  nome: string;
-  telefone: string;
-  email: string;
-  plano: 'mensal' | 'trimestral' | 'avulso';
-  aulas_restantes: number;
-  status: 'Ativo' | 'Inativo';
-}
 
 /* =======================
    COMPONENTE
@@ -71,12 +58,18 @@ const Students: React.FC = () => {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Delete confirmation state
+  const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const [formData, setFormData] = useState({
     nome: '',
     telefone: '',
     email: '',
     plano: 'mensal' as 'mensal' | 'trimestral' | 'avulso',
     aulas_restantes: 4,
+    status: 'Ativo' as 'Ativo' | 'Inativo',
   });
 
   /* =======================
@@ -128,7 +121,8 @@ const Students: React.FC = () => {
         telefone: student.telefone,
         email: student.email,
         plano: student.plano,
-        aulas_restantes: student.aulas_restantes,
+        aulas_restantes: student.aulas_restantes ?? 4,
+        status: student.status,
       });
     } else {
       setEditingStudent(null);
@@ -138,6 +132,7 @@ const Students: React.FC = () => {
         email: '',
         plano: 'mensal',
         aulas_restantes: 4,
+        status: 'Ativo',
       });
     }
 
@@ -163,26 +158,68 @@ const Students: React.FC = () => {
     try {
       setIsSubmitting(true);
 
-      await criarAluno({
-        ...formData,
-        status: 'Ativo',
-      });
+      if (editingStudent) {
+        await atualizarAluno(editingStudent.id, {
+          ...formData,
+        });
 
-      toast({
-        title: 'Aluno cadastrado!',
-        description: `${formData.nome} foi cadastrado com sucesso.`,
-      });
+        toast({
+          title: 'Aluno atualizado!',
+          description: `${formData.nome} foi atualizado com sucesso.`,
+        });
+      } else {
+        await criarAluno({
+          ...formData,
+          status: 'Ativo',
+        });
+
+        toast({
+          title: 'Aluno cadastrado!',
+          description: `${formData.nome} foi cadastrado com sucesso.`,
+        });
+      }
 
       await carregarAlunos();
       setIsModalOpen(false);
     } catch {
       toast({
         title: 'Erro',
-        description: 'Erro ao salvar aluno',
+        description: editingStudent ? 'Erro ao atualizar aluno' : 'Erro ao salvar aluno',
         variant: 'destructive',
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteClick = (student: Student) => {
+    setStudentToDelete(student);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!studentToDelete) return;
+
+    try {
+      setIsDeleting(true);
+      await excluirAluno(studentToDelete.id);
+
+      toast({
+        title: 'Aluno excluído',
+        description: 'O aluno foi removido com sucesso.',
+      });
+
+      await carregarAlunos();
+      setIsDeleteModalOpen(false);
+    } catch (error) {
+      toast({
+        title: 'Erro',
+        description: 'Erro ao excluir aluno.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+      setStudentToDelete(null);
     }
   };
 
@@ -292,13 +329,33 @@ const Students: React.FC = () => {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleSendWhatsApp(student)}
-                    >
-                      <MessageCircle className="h-4 w-4" />
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleSendWhatsApp(student)}
+                        title="Enviar WhatsApp"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleOpenModal(student)}
+                        title="Editar"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                        onClick={() => handleDeleteClick(student)}
+                        title="Excluir"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -311,9 +368,9 @@ const Students: React.FC = () => {
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Novo Aluno</DialogTitle>
+            <DialogTitle>{editingStudent ? 'Editar Aluno' : 'Novo Aluno'}</DialogTitle>
             <DialogDescription>
-              Preencha os dados para cadastrar um aluno
+              {editingStudent ? 'Edite os dados do aluno' : 'Preencha os dados para cadastrar um aluno'}
             </DialogDescription>
           </DialogHeader>
 
@@ -340,6 +397,50 @@ const Students: React.FC = () => {
                 setFormData({ ...formData, email: e.target.value })
               }
             />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value) =>
+                    setFormData({
+                      ...formData,
+                      status: value as 'Ativo' | 'Inativo',
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Ativo">Ativo</SelectItem>
+                    <SelectItem value="Inativo">Inativo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Plano</Label>
+                <Select
+                  value={formData.plano}
+                  onValueChange={(value) =>
+                    setFormData({
+                      ...formData,
+                      plano: value as 'mensal' | 'trimestral' | 'avulso',
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o plano" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mensal">Mensal</SelectItem>
+                    <SelectItem value="trimestral">Trimestral</SelectItem>
+                    <SelectItem value="avulso">Avulso</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
             <DialogFooter>
               <Button type="submit" disabled={isSubmitting}>
@@ -349,11 +450,46 @@ const Students: React.FC = () => {
                     Salvando...
                   </>
                 ) : (
-                  'Cadastrar'
+                  editingStudent ? 'Salvar' : 'Cadastrar'
                 )}
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Exclusão</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir o aluno <strong>{studentToDelete?.nome}</strong>? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteModalOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Excluindo...
+                </>
+              ) : (
+                'Excluir'
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
