@@ -59,7 +59,7 @@ export const AulasService = {
         try {
             // Note: Adjust URL structure if your n8n expects ID in body vs URL param
             const res = await fetch(`${API_URLS.UPDATE}`, {
-                method: 'POST',
+                method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id, ...dadosAtualizados }),
             });

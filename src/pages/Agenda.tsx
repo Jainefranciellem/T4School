@@ -18,6 +18,7 @@ import { format, addWeeks, subWeeks, startOfWeek, endOfWeek, eachDayOfInterval, 
 import { ptBR } from 'date-fns/locale';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AulasService, Aula } from '@/lib/aulas.service';
+import { listarAlunos } from '@/lib/students.service';
 import { useToast } from '@/hooks/use-toast';
 
 type ViewMode = 'day' | 'week' | 'month';
@@ -39,6 +40,12 @@ const Agenda: React.FC = () => {
   const { data: lessons = [], isLoading, isError } = useQuery({
     queryKey: ['aulas'],
     queryFn: AulasService.listarAulas,
+  });
+
+  // Fetch Students
+  const { data: students = [] } = useQuery({
+    queryKey: ['alunos'],
+    queryFn: listarAlunos,
   });
 
   // Mutations
@@ -95,6 +102,48 @@ const Agenda: React.FC = () => {
     } else {
       createLessonMutation.mutate(lessonData);
     }
+  };
+
+  const handleConfirmLesson = (lesson: Lesson) => {
+    updateLessonMutation.mutate(
+      {
+        id: lesson.id,
+        data: {
+          status: 'Confirmada',
+          notificacao_enviada: true
+        }
+      },
+      {
+        onSuccess: () => {
+          toast({
+            title: 'Aula Confirmada',
+            description: 'Status atualizado e notificação enviada ao aluno.',
+            className: 'bg-green-50 border-green-200'
+          });
+        }
+      }
+    );
+  };
+
+  const handleCancelLesson = (lesson: Lesson) => {
+    updateLessonMutation.mutate(
+      {
+        id: lesson.id,
+        data: {
+          status: 'Cancelada',
+          notificacao_enviada: true
+        }
+      },
+      {
+        onSuccess: () => {
+          toast({
+            title: 'Aula Cancelada',
+            description: 'Status atualizado e aluno notificado.',
+            variant: 'destructive'
+          });
+        }
+      }
+    );
   };
 
   return (
@@ -230,8 +279,12 @@ const Agenda: React.FC = () => {
                       <LessonCard
                         key={lesson.id}
                         lesson={lesson}
+                        student={students.find((s) => s.id === lesson.aluno_id)}
                         compact
                         onEdit={handleEditLesson}
+                        onConfirm={handleConfirmLesson}
+                        onCancel={handleCancelLesson}
+                        onReschedule={handleEditLesson}
                       />
                     ))
                   ) : (
@@ -282,10 +335,11 @@ const Agenda: React.FC = () => {
                 <LessonCard
                   key={lesson.id}
                   lesson={lesson}
+                  student={students.find((s) => s.id === lesson.aluno_id)}
                   onEdit={handleEditLesson}
-                  onConfirm={() => console.log('Confirm', lesson.id)} // Could implement these later
-                  onCancel={() => console.log('Cancel', lesson.id)}
-                  onReschedule={() => console.log('Reschedule', lesson.id)}
+                  onConfirm={handleConfirmLesson}
+                  onCancel={handleCancelLesson}
+                  onReschedule={handleEditLesson}
                 />
               ))
             ) : (

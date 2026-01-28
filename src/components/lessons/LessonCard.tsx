@@ -3,11 +3,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Lesson, getStudentById } from '@/data/mockData';
+import { Student } from '@/lib/students.service';
 import { cn } from '@/lib/utils';
 import { Clock, MapPin, User, Check, X, RotateCcw, MessageCircle } from 'lucide-react';
 
 interface LessonCardProps {
   lesson: Lesson;
+  student?: Student;
   onEdit?: (lesson: Lesson) => void;
   onConfirm?: (lesson: Lesson) => void;
   onCancel?: (lesson: Lesson) => void;
@@ -25,13 +27,14 @@ const statusConfig = {
 
 export const LessonCard: React.FC<LessonCardProps> = ({
   lesson,
+  student: propStudent,
   onEdit,
   onConfirm,
   onCancel,
   onReschedule,
   compact = false,
 }) => {
-  const student = getStudentById(lesson.aluno_id);
+  const student = propStudent || getStudentById(lesson.aluno_id);
   const config = statusConfig[lesson.status] || { variant: 'default' as const, label: lesson.status };
 
   const isPast = new Date(lesson.data) < new Date(new Date().toDateString());
