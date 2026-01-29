@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { pedirPermissaoNotificacao } from '@/lib/notifications.service';
+import { salvarDispositivoProfessor } from '@/lib/professor.service';
 
 const WaveBackground = () => (
   <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -78,13 +79,16 @@ const Login: React.FC = () => {
     setIsSubmitting(false);
 
     if (result.success) {
-      await pedirPermissaoNotificacao();
+      const token = await pedirPermissaoNotificacao();
 
       toast({
         title: 'Bem-vindo! 🏄',
         description: 'Login realizado com sucesso.',
       });
 
+      if (token) {
+        await salvarDispositivoProfessor(token);
+      }
       navigate('/dashboard');
     } else {
       toast({
@@ -103,7 +107,8 @@ const Login: React.FC = () => {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-32 h-32 rounded-2xl bg-primary shadow-ocean mb-4">
-            <img src="src/assets/logo.png" alt="" className='w-32 h-32 object-contain' />
+            <img src="/logo.png" alt="Logo" className="w-32 h-32 object-contain" />
+
           </div>
           <p className="text-muted-foreground mt-2">
             Sistema de Agendamento de Aulas
