@@ -1,37 +1,61 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>T4School - Sistema de Agendamento de Aulas de Surf</title>
-  <meta name="description"
-    content="Sistema completo para gerenciamento de aulas de surf. Agende, gerencie alunos e envie lembretes automáticos por WhatsApp." />
-  <meta name="author" content="T4School" />
-  <meta name="keywords" content="surf, aulas, agendamento, escola de surf, gestão" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
-  <meta property="og:title" content="T4School - Agendamento de Aulas" />
-  <meta property="og:description"
-    content="Sistema completo para gerenciamento de aulas de surf com notificações via WhatsApp." />
-  <meta property="og:type" content="website" />
-  <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+  <!-- Título -->
+  <title>Agenda</title>
 
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:site" content="@T4School" />
-  <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-
-  <link rel="manifest" href="/manifest.json">
+  <!-- ==================== ÍCONES IOS (PRIORIDADE MÁXIMA) ==================== -->
+  <!-- iOS usa estes ícones ANTES do manifest.json -->
   <link rel="apple-touch-icon" href="/icon-180.png">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Agenda">
-  <meta name="theme-color" content="#2563eb">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="/icon-180.png">
+  <link rel="apple-touch-icon" sizes="167x167" href="/icon-180.png">
+  <link rel="apple-touch-icon" sizes="120x120" href="/icon-180.png">
 
+  <!-- ==================== META TAGS IOS ==================== -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Agenda">
+
+  <!-- ==================== PWA MANIFEST ==================== -->
+  <link rel="manifest" href="/manifest.json">
+
+  <!-- ==================== THEME COLOR ==================== -->
+  <meta name="theme-color" content="#ff6b00">
+  <meta name="msapplication-TileColor" content="#ff6b00">
+
+  <!-- ==================== FAVICONS PADRÃO ==================== -->
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
+  <link rel="shortcut icon" href="/icon-180.png">
+
+  <!-- ==================== META TAGS GERAIS ==================== -->
+  <meta name="description" content="Sistema de agenda escolar T4School">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <!-- Prevenir zoom no iOS -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 </head>
 
 <body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.tsx"></script>
+  <h1>Agenda T4School</h1>
+
+  <!-- Seu conteúdo aqui -->
+
+  <script>
+    // Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {
+          console.log('Service Worker não encontrado (normal se não existir)');
+        });
+      });
+    }
+  </script>
 </body>
 
 </html>
