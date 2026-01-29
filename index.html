@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
   <!-- Título -->
-  <title>Agenda</title>
+  <title>T4School</title>
 
   <!-- ==================== ÍCONES IOS (PRIORIDADE MÁXIMA) ==================== -->
   <!-- iOS usa estes ícones ANTES do manifest.json -->
@@ -37,7 +37,6 @@
   <meta name="description" content="Sistema de agenda escolar T4School">
   <meta name="mobile-web-app-capable" content="yes">
 
-  <!-- Prevenir zoom no iOS -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 </head>
 
@@ -46,7 +45,6 @@
   <script type="module" src="/src/main.tsx"></script>
 
   <script>
-    // Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js').catch(() => {
