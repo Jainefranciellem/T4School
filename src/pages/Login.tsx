@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { pedirPermissaoNotificacao } from '@/lib/notifications.service';
 
 const WaveBackground = () => (
   <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -77,10 +78,13 @@ const Login: React.FC = () => {
     setIsSubmitting(false);
 
     if (result.success) {
+      await pedirPermissaoNotificacao();
+
       toast({
         title: 'Bem-vindo! 🏄',
         description: 'Login realizado com sucesso.',
       });
+
       navigate('/dashboard');
     } else {
       toast({
