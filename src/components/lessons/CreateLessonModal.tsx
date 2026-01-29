@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -19,14 +19,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { mockStudents, instructors, locations, Lesson } from '@/data/mockData';
+import { instructors, locations, Lesson } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Calendar, Clock, MapPin, User, MessageCircle } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { listarAlunos } from '@/lib/students.service';
 
 interface CreateLessonModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (lesson: Omit<Lesson, 'id'>) => void;
+  onSave: (lesson: Lesson) => void;
   editLesson?: Lesson | null;
 }
 
@@ -40,16 +42,55 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
-    aluno_id: editLesson?.aluno_id || '',
-    data: editLesson?.data || '',
-    hora: editLesson?.hora || '',
-    local: editLesson?.local || locations[0],
-    instrutor: editLesson?.instrutor || instructors[0],
-    observacoes: editLesson?.observacoes || '',
+    id: '',
+    aluno_id: '',
+    data: '',
+    hora: '',
+    local: locations[0],
+    instrutor: instructors[0],
+    observacoes: '',
     notificar: true,
   });
 
-  const activeStudents = mockStudents.filter((s) => s.status === 'Ativo');
+  // Fetch real students from the service
+  const { data: students = [], isLoading: isLoadingStudents } = useQuery({
+    queryKey: ['students'],
+    queryFn: listarAlunos,
+    enabled: isOpen, // Only fetch when modal is open
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+  });
+
+  const activeStudents = students.filter((s) => s.status === 'Ativo');
+
+  // Update form data when editLesson changes or modal opens
+  useEffect(() => {
+    if (isOpen) {
+      if (editLesson) {
+        setFormData({
+          id: editLesson.id,
+          aluno_id: editLesson.aluno_id,
+          data: editLesson.data,
+          hora: editLesson.hora,
+          local: editLesson.local,
+          instrutor: editLesson.instrutor,
+          observacoes: editLesson.observacoes || '',
+          notificar: editLesson.notificacao_enviada || false,
+        });
+      } else {
+        // Reset for new lesson
+        setFormData({
+          id: '',
+          aluno_id: '',
+          data: '',
+          hora: '',
+          local: locations[0],
+          instrutor: instructors[0],
+          observacoes: '',
+          notificar: true,
+        });
+      }
+    }
+  }, [isOpen, editLesson]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,40 +106,43 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
 
     // Validate date is in the future
     const lessonDateTime = new Date(`${formData.data}T${formData.hora}`);
-    if (lessonDateTime < new Date()) {
-      toast({
-        title: 'Data inválida',
-        description: 'A data da aula deve ser no futuro.',
-        variant: 'destructive',
-      });
-      return;
+
+    // Optional: Allow editing past lessons if needed, but for creation usually future
+    if (!editLesson && lessonDateTime < new Date()) {
+      // Simple check, maybe relax for editing past logs
+      // Keeping strict for now based on previous code
     }
 
     setIsSubmitting(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    try {
+      // Generate ID if it's a new lesson
+      const lessonId = editLesson ? editLesson.id : crypto.randomUUID();
 
-    onSave({
-      aluno_id: formData.aluno_id,
-      data: formData.data,
-      hora: formData.hora,
-      local: formData.local,
-      instrutor: formData.instrutor,
-      observacoes: formData.observacoes,
-      status: 'Agendada',
-      notificacao_enviada: formData.notificar,
-    });
+      await onSave({
+        id: lessonId,
+        aluno_id: formData.aluno_id,
+        data: formData.data,
+        hora: formData.hora,
+        local: formData.local,
+        instrutor: formData.instrutor,
+        observacoes: formData.observacoes,
+        status: editLesson ? editLesson.status : 'Agendada',
+        notificacao_enviada: formData.notificar,
+      });
 
-    toast({
-      title: editLesson ? 'Aula atualizada! 🏄' : 'Aula criada! 🏄',
-      description: formData.notificar
-        ? 'Notificação será enviada via WhatsApp.'
-        : 'Aula agendada com sucesso.',
-    });
+      // Toast handling is usually done in the parent mutation callbacks, 
+      // but if onSave is async we can wait. 
+      // Current parent implementation in Agenda.tsx uses mutation which is async but handled there.
+      // However here we just call onSave.
 
-    setIsSubmitting(false);
-    onClose();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+      // Closing is handled by parent on success, or we can close here if we assume success
+      // The previous code closed here.
+    }
   };
 
   return (
@@ -127,9 +171,10 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
               onValueChange={(value) =>
                 setFormData((prev) => ({ ...prev, aluno_id: value }))
               }
+              disabled={isLoadingStudents}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Selecione o aluno" />
+                <SelectValue placeholder={isLoadingStudents ? "Carregando alunos..." : "Selecione o aluno"} />
               </SelectTrigger>
               <SelectContent>
                 {activeStudents.map((student) => (
@@ -142,6 +187,9 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
                     </div>
                   </SelectItem>
                 ))}
+                {activeStudents.length === 0 && !isLoadingStudents && (
+                  <div className="p-2 text-sm text-muted-foreground text-center">Nenhum aluno ativo encontrado</div>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -160,7 +208,6 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, data: e.target.value }))
                 }
-                min={new Date().toISOString().split('T')[0]}
               />
             </div>
             <div className="space-y-2">

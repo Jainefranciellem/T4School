@@ -7,12 +7,14 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { pedirPermissaoNotificacao } from '@/lib/notifications.service';
+import { salvarDispositivoProfessor } from '@/lib/professor.service';
 
 const WaveBackground = () => (
   <div className="absolute inset-0 overflow-hidden pointer-events-none">
     {/* Gradient background */}
     <div className="absolute inset-0 gradient-ocean opacity-10" />
-    
+
     {/* Animated waves */}
     <svg
       className="absolute bottom-0 left-0 w-full h-64 md:h-80"
@@ -41,7 +43,7 @@ const Login: React.FC = () => {
   const { isAuthenticated, login, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -53,7 +55,7 @@ const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !password) {
       toast({
         title: 'Campos obrigatórios',
@@ -77,10 +79,16 @@ const Login: React.FC = () => {
     setIsSubmitting(false);
 
     if (result.success) {
+      const token = await pedirPermissaoNotificacao();
+
       toast({
         title: 'Bem-vindo! 🏄',
         description: 'Login realizado com sucesso.',
       });
+
+      if (token) {
+        await salvarDispositivoProfessor(token);
+      }
       navigate('/dashboard');
     } else {
       toast({
@@ -94,16 +102,14 @@ const Login: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center relative bg-background p-4">
       <WaveBackground />
-      
+
       <div className="w-full max-w-md relative z-10 animate-fade-in">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl gradient-ocean shadow-ocean mb-4">
-            <span className="text-3xl">🏄</span>
+          <div className="inline-flex items-center justify-center w-32 h-32 rounded-2xl bg-primary shadow-ocean mb-4">
+            <img src="/logo.png" alt="Logo" className="w-32 h-32 object-contain" />
+
           </div>
-          <h1 className="font-display text-3xl font-bold text-foreground">
-            T4School
-          </h1>
           <p className="text-muted-foreground mt-2">
             Sistema de Agendamento de Aulas
           </p>

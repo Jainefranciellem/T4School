@@ -2,120 +2,96 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
-
 @layer base {
   :root {
-    /* Ocean-inspired color palette */
-    --background: 200 20% 98%;
-    --foreground: 210 40% 10%;
+    /* Brand Palette based on provided images */
+    /* Primary (Orange): #F37100 -> 28 100% 48% */
+    /* Secondary (Teal): #2FB1B3 -> 181 59% 44% */
+    /* Background (Off-White): #EFEEE9 -> 50 14% 93% */
+    /* Black: #000000 -> 0 0% 0% */
+
+    --background: 50 14% 93%;
+    --foreground: 0 0% 0%;
 
     --card: 0 0% 100%;
-    --card-foreground: 210 40% 10%;
+    --card-foreground: 0 0% 0%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 210 40% 10%;
+    --popover-foreground: 0 0% 0%;
 
-    /* Deep turquoise - primary brand */
-    --primary: 191 84% 32%;
+    --primary: 28 100% 47.6%;
     --primary-foreground: 0 0% 100%;
 
-    /* Light ocean blue - secondary */
-    --secondary: 213 94% 68%;
-    --secondary-foreground: 210 40% 10%;
+    --secondary: 181 59% 44%;
+    --secondary-foreground: 0 0% 100%;
 
-    /* Muted ocean foam */
-    --muted: 200 20% 94%;
-    --muted-foreground: 210 20% 45%;
+    --muted: 50 10% 90%;
+    --muted-foreground: 240 5% 45%;
 
-    /* Coral accent */
-    --accent: 16 85% 65%;
+    --accent: 181 59% 44%;
     --accent-foreground: 0 0% 100%;
 
-    /* Danger/warning states */
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
 
-    /* Success - seafoam green */
-    --success: 162 63% 41%;
-    --success-foreground: 0 0% 100%;
-
-    /* Warning - sand/amber */
-    --warning: 38 92% 50%;
-    --warning-foreground: 210 40% 10%;
-
-    --border: 200 20% 88%;
-    --input: 200 20% 88%;
-    --ring: 191 84% 32%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 28 100% 47.6%;
 
     --radius: 0.75rem;
 
-    /* Custom gradients */
-    --gradient-ocean: linear-gradient(135deg, hsl(191, 84%, 32%) 0%, hsl(213, 94%, 68%) 100%);
-    --gradient-sunset: linear-gradient(135deg, hsl(16, 85%, 65%) 0%, hsl(38, 92%, 50%) 100%);
-    --gradient-wave: linear-gradient(180deg, hsl(200, 20%, 98%) 0%, hsl(200, 30%, 95%) 100%);
-    
-    /* Shadows */
-    --shadow-sm: 0 1px 2px 0 hsl(210 40% 10% / 0.05);
-    --shadow-md: 0 4px 6px -1px hsl(210 40% 10% / 0.08), 0 2px 4px -2px hsl(210 40% 10% / 0.04);
-    --shadow-lg: 0 10px 15px -3px hsl(210 40% 10% / 0.08), 0 4px 6px -4px hsl(210 40% 10% / 0.04);
-    --shadow-ocean: 0 10px 40px -10px hsl(191 84% 32% / 0.25);
-
-    /* Sidebar */
+    /* Sidebar - keeping it light/clean or dark for contrast? 
+       Let's try a dark sidebar for premium feel as implied by the black "Principal" card in the 3rd image */
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 210 40% 10%;
-    --sidebar-primary: 191 84% 32%;
+    --sidebar-foreground: 240 5% 26%;
+    --sidebar-primary: 28 100% 47.6%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 200 20% 96%;
-    --sidebar-accent-foreground: 210 40% 10%;
-    --sidebar-border: 200 20% 90%;
-    --sidebar-ring: 191 84% 32%;
+    --sidebar-accent: 50 14% 93%;
+    --sidebar-accent-foreground: 28 100% 47.6%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 28 100% 47.6%;
+
+    --shadow-ocean: 0 10px 30px -10px rgba(47, 177, 179, 0.3);
+    /* Updated to use Teal shadow */
   }
 
   .dark {
-    /* Ocean night palette */
-    --background: 210 40% 8%;
-    --foreground: 200 20% 95%;
+    --background: 0 0% 5%;
+    --foreground: 50 14% 93%;
 
-    --card: 210 35% 12%;
-    --card-foreground: 200 20% 95%;
+    --card: 0 0% 8%;
+    --card-foreground: 50 14% 93%;
 
-    --popover: 210 35% 12%;
-    --popover-foreground: 200 20% 95%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 50 14% 93%;
 
-    --primary: 191 80% 45%;
-    --primary-foreground: 210 40% 8%;
+    --primary: 28 100% 47.6%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 213 70% 50%;
-    --secondary-foreground: 200 20% 95%;
+    --secondary: 181 59% 44%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 210 30% 18%;
-    --muted-foreground: 200 15% 60%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 240 5% 65%;
 
-    --accent: 16 75% 55%;
-    --accent-foreground: 200 20% 95%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 50 14% 93%;
 
-    --destructive: 0 62% 45%;
-    --destructive-foreground: 200 20% 95%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 50 14% 93%;
 
-    --success: 162 55% 38%;
-    --success-foreground: 200 20% 95%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 28 100% 47.6%;
 
-    --warning: 38 80% 45%;
-    --warning-foreground: 200 20% 95%;
-
-    --border: 210 30% 20%;
-    --input: 210 30% 20%;
-    --ring: 191 80% 45%;
-
-    --sidebar-background: 210 35% 10%;
-    --sidebar-foreground: 200 20% 95%;
-    --sidebar-primary: 191 80% 45%;
-    --sidebar-primary-foreground: 210 40% 8%;
-    --sidebar-accent: 210 30% 16%;
-    --sidebar-accent-foreground: 200 20% 95%;
-    --sidebar-border: 210 30% 18%;
-    --sidebar-ring: 191 80% 45%;
+    --sidebar-background: 0 0% 8%;
+    --sidebar-foreground: 50 14% 93%;
+    --sidebar-primary: 28 100% 47.6%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 50 14% 93%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 28 100% 47.6%;
   }
 }
 
@@ -125,149 +101,18 @@
   }
 
   body {
+    /* Using the off-white background by default */
     @apply bg-background text-foreground font-sans antialiased;
-    font-feature-settings: "cv11", "ss01", "ss03";
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-display font-semibold tracking-tight;
-  }
-}
-
-@layer components {
-  .gradient-ocean {
-    background: var(--gradient-ocean);
-  }
-
-  .gradient-sunset {
-    background: var(--gradient-sunset);
-  }
-
-  .gradient-wave {
-    background: var(--gradient-wave);
-  }
-
-  .shadow-ocean {
-    box-shadow: var(--shadow-ocean);
-  }
-
-  .glass {
-    @apply bg-card/80 backdrop-blur-xl border border-border/50;
-  }
-
-  .glass-strong {
-    @apply bg-card/95 backdrop-blur-2xl border border-border/30;
   }
 }
 
 @layer utilities {
-  .animate-wave {
-    animation: wave 3s ease-in-out infinite;
+  .gradient-ocean {
+    /* Updated gradient to use the Brand Colors: Teal to Orange or similar */
+    @apply bg-gradient-to-r from-[#2FB1B3] to-[#F37100];
   }
 
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#F37100] to-[#2FB1B3];
   }
-
-  .animate-fade-in {
-    animation: fadeIn 0.5s ease-out forwards;
-  }
-
-  .animate-slide-up {
-    animation: slideUp 0.5s ease-out forwards;
-  }
-
-  .animate-slide-in-right {
-    animation: slideInRight 0.3s ease-out forwards;
-  }
-}
-
-@keyframes wave {
-  0%, 100% {
-    transform: translateY(0) rotate(0deg);
-  }
-  50% {
-    transform: translateY(-10px) rotate(2deg);
-  }
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-20px);
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideInRight {
-  from {
-    opacity: 0;
-    transform: translateX(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-/* Wave SVG animation for login */
-.wave-animation {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  overflow: hidden;
-  line-height: 0;
-}
-
-.wave-animation svg {
-  position: relative;
-  display: block;
-  width: calc(100% + 1.3px);
-  height: 150px;
-}
-
-.wave-animation .shape-fill {
-  fill: hsl(var(--primary) / 0.1);
-}
-
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: hsl(var(--muted));
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--primary) / 0.3);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary) / 0.5);
 }
