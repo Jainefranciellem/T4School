@@ -1,14 +1,14 @@
 {
-    "name": "Agenda do Professor",
-    "short_name": "Agenda",
+    "name": "T4School",
+    "short_name": "T4",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#ffffff",
     "theme_color": "#2563eb",
     "icons": [
         {
-            "src": "/icon-192.png",
-            "sizes": "192x192",
+            "src": "/icon-180.png",
+            "sizes": "180x180",
             "type": "image/png"
         },
         {
