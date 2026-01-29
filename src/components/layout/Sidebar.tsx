@@ -62,7 +62,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
                     <div className="p-6 border-b border-sidebar-border">
                         <div className="flex items-center gap-3">
                             <div className="w-16 h-16 rounded-xl bg-primary flex items-center justify-center shadow-ocean">
-                                <img src="/src/assets/logo.png" alt="Logo" className="w-full h-full" width={150} height={150} />
+                                <img src="/logo.png" alt="Logo" className="w-full h-full" width={150} height={150} />
                             </div>
                             <div>
                                 <p className="text-xs text-muted-foreground">Sistema de Aulas</p>
