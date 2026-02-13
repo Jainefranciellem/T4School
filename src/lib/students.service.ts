@@ -11,7 +11,7 @@ export interface Student {
   nome: string;
   telefone: string;
   email: string;
-  plano: 'mensal' | 'trimestral' | 'avulso';
+  plano: string;
   aulas_restantes?: number;
   status: 'Ativo' | 'Inativo';
 }

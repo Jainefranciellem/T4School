@@ -1,24 +1,21 @@
-self.addEventListener('install', () => {
-    console.log('Service Worker instalado');
-});
+importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
 
-self.addEventListener('activate', () => {
-    console.log('Service Worker ativo');
-});
 
-self.addEventListener('push', event => {
-    const data = event.data.json();
+const firebaseConfig = {
+    apiKey: "AIzaSyBfRU_AsNMFr-1wt-C089-GW0jIkt5mnCM",
+    authDomain: "t4school-87ac0.firebaseapp.com",
+    projectId: "t4school-87ac0",
+    storageBucket: "t4school-87ac0.firebasestorage.app",
+    messagingSenderId: "365561613112",
+    appId: "1:365561613112:web:a2a5615b9185fd452c8fcd",
+    measurementId: "G-ZYB9YF8Z27"
+};
+const messaging = firebase.messaging();
 
-    self.registration.showNotification(data.title, {
-        body: data.body,
-        icon: '/icon-192.png',
-        data: data.url
+messaging.onBackgroundMessage(payload => {
+    self.registration.showNotification(payload.notification.title, {
+        body: payload.notification.body,
+        icon: '/icon-192.png'
     });
-});
-
-self.addEventListener('notificationclick', event => {
-    event.notification.close();
-    event.waitUntil(
-        clients.openWindow(event.notification.data || '/')
-    );
 });

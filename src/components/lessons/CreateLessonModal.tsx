@@ -128,7 +128,13 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
         instrutor: formData.instrutor,
         observacoes: formData.observacoes,
         status: editLesson ? editLesson.status : 'Agendada',
-        notificacao_enviada: formData.notificar,
+        // If we are sending a new notification, reset the sent status to false to trigger the workflow
+        notificacao_enviada: formData.notificar ? false : (editLesson ? editLesson.notificacao_enviada : false),
+        enviar_notificacao: formData.notificar,
+        // Calculate remaining lessons: current - 1 (for the lesson being booked)
+        aulas_restantes: (!editLesson && formData.aluno_id)
+          ? (activeStudents.find(s => s.id === formData.aluno_id)?.aulas_restantes || 0) - 1
+          : undefined
       });
 
       // Toast handling is usually done in the parent mutation callbacks, 

@@ -5,7 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Lesson, getStudentById } from '@/data/mockData';
 import { Student } from '@/lib/students.service';
 import { cn } from '@/lib/utils';
-import { Clock, MapPin, User, Check, X, RotateCcw, MessageCircle } from 'lucide-react';
+import { Clock, MapPin, User, Check, X, RotateCcw, MessageCircle, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { format } from 'date-fns';
 
 interface LessonCardProps {
   lesson: Lesson;
@@ -37,7 +44,8 @@ export const LessonCard: React.FC<LessonCardProps> = ({
   const student = propStudent || getStudentById(lesson.aluno_id);
   const config = statusConfig[lesson.status] || { variant: 'default' as const, label: lesson.status };
 
-  const isPast = new Date(lesson.data) < new Date(new Date().toDateString());
+  // Fix: Compare only date parts using local time via date-fns
+  const isPast = lesson.data < format(new Date(), 'yyyy-MM-dd');
   const canModify = !['Compareceu', 'Faltou', 'Cancelada'].includes(lesson.status);
 
   if (compact) {
@@ -57,9 +65,41 @@ export const LessonCard: React.FC<LessonCardProps> = ({
               {student?.nome || 'Aluno'}
             </span>
           </div>
-          <Badge variant={config.variant} className="text-xs shrink-0">
-            {config.label}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant={config.variant} className="text-xs shrink-0">
+              {config.label}
+            </Badge>
+
+            {canModify && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 -mr-2">
+                    <MoreVertical className="h-3 w-3" />
+                    <span className="sr-only">More options</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenuItem onClick={() => onEdit?.(lesson)}>
+                    <Edit className="mr-2 h-3 w-3" />
+                    Editar
+                  </DropdownMenuItem>
+                  {lesson.status === 'Agendada' && (
+                    <DropdownMenuItem onClick={() => onConfirm?.(lesson)}>
+                      <Check className="mr-2 h-3 w-3" />
+                      Confirmar
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem
+                    onClick={() => onCancel?.(lesson)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-3 w-3" />
+                    Cancelar
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
         </div>
       </div>
     );

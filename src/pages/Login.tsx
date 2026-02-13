@@ -7,9 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
-import { pedirPermissaoNotificacao } from '@/lib/notifications.service';
 import { salvarDispositivoProfessor } from '@/lib/professor.service';
 import logo from '@/assets/logo.png';
+import { pedirPermissaoNotificacaoProfessor } from '@/lib/firebase';
 
 const WaveBackground = () => (
   <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -80,7 +80,14 @@ const Login: React.FC = () => {
     setIsSubmitting(false);
 
     if (result.success) {
-      const token = await pedirPermissaoNotificacao();
+      const token = await pedirPermissaoNotificacaoProfessor();
+
+      salvarToken({
+        professor_id: professorId,
+        token_push: token,
+        tipo: 'professor'
+      });
+
 
       toast({
         title: 'Bem-vindo! 🏄',
@@ -205,3 +212,7 @@ const Login: React.FC = () => {
 };
 
 export default Login;
+function salvarToken(arg0: { professor_id: any; token_push: string; tipo: string; }) {
+  throw new Error('Function not implemented.');
+}
+

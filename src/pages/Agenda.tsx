@@ -131,7 +131,8 @@ const Agenda: React.FC = () => {
         id: lesson.id,
         data: {
           status: 'Cancelada',
-          notificacao_enviada: true
+          notificacao_enviada: false,
+          enviar_notificacao: true
         }
       },
       {

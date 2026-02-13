@@ -65,7 +65,7 @@ const Students: React.FC = () => {
     nome: '',
     telefone: '',
     email: '',
-    plano: 'mensal' as 'mensal' | 'trimestral' | 'avulso',
+    plano: 'Pacote 4 Aulas',
     aulas_restantes: 4,
     status: 'Ativo' as 'Ativo' | 'Inativo',
   });
@@ -154,7 +154,7 @@ const Students: React.FC = () => {
         nome: '',
         telefone: '',
         email: '',
-        plano: 'mensal',
+        plano: 'Pacote 4 Aulas',
         aulas_restantes: 4,
         status: 'Ativo',
       });
@@ -400,7 +400,7 @@ const Students: React.FC = () => {
                   onValueChange={(value) =>
                     setFormData({
                       ...formData,
-                      plano: value as 'mensal' | 'trimestral' | 'avulso',
+                      plano: value,
                     })
                   }
                 >
@@ -408,9 +408,10 @@ const Students: React.FC = () => {
                     <SelectValue placeholder="Selecione o plano" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="mensal">Mensal</SelectItem>
-                    <SelectItem value="trimestral">Trimestral</SelectItem>
-                    <SelectItem value="avulso">Avulso</SelectItem>
+                    <SelectItem value="Aula Avulsa">Aula Avulsa</SelectItem>
+                    <SelectItem value="Pacote 4 Aulas">Pacote 4 Aulas</SelectItem>
+                    <SelectItem value="Pacote 6 Aulas">Pacote 6 Aulas</SelectItem>
+                    <SelectItem value="Pacote 10 Aulas">Pacote 10 Aulas</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -466,7 +467,7 @@ const Students: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 };
 

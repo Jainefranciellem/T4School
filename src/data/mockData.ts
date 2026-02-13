@@ -3,7 +3,7 @@ export interface Student {
   nome: string;
   telefone: string;
   email: string;
-  plano: 'trimestral' | 'mensal' | 'avulso';
+  plano: string;
   aulas_restantes: number;
   status: 'Ativo' | 'Inativo';
   avatar?: string;
@@ -19,6 +19,8 @@ export interface Lesson {
   status: 'Agendada' | 'Confirmada' | 'Compareceu' | 'Faltou' | 'Cancelada';
   observacoes?: string;
   notificacao_enviada?: boolean;
+  enviar_notificacao?: boolean;
+  aulas_restantes?: number;
 }
 
 export interface Plan {
@@ -36,7 +38,7 @@ export const mockStudents: Student[] = [
     nome: 'Lucas Silva',
     telefone: '5584999001122',
     email: 'lucas.silva@email.com',
-    plano: 'trimestral',
+    plano: 'Pacote 10 Aulas',
     aulas_restantes: 10,
     status: 'Ativo',
   },
@@ -182,9 +184,10 @@ export const mockLessons: Lesson[] = [
 ];
 
 export const mockPlans: Plan[] = [
-  { id: '1', nome: 'Avulso', qtd_aulas: 1, validade_dias: 30, preco: 120 },
-  { id: '2', nome: 'Mensal', qtd_aulas: 4, validade_dias: 30, preco: 450 },
-  { id: '3', nome: 'Trimestral', qtd_aulas: 10, validade_dias: 90, preco: 850 },
+  { id: '1', nome: 'Aula Avulsa', qtd_aulas: 1, validade_dias: 30, preco: 130 },
+  { id: '2', nome: 'Pacote 4 Aulas', qtd_aulas: 4, validade_dias: 30, preco: 480 },
+  { id: '3', nome: 'Pacote 6 Aulas', qtd_aulas: 6, validade_dias: 45, preco: 720 },
+  { id: '4', nome: 'Pacote 10 Aulas', qtd_aulas: 10, validade_dias: 90, preco: 950 },
 ];
 
 export const instructors = ['Torquato'];
