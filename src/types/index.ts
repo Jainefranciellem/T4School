@@ -38,6 +38,8 @@ export interface AppSettings {
   id: string;
   whatsapp_phone_id?: string | null;
   whatsapp_token?: string | null;
+  resend_api_key?: string | null;
+  email_from?: string | null;
   send_reminders: boolean;
   reminder_hours: number;
   double_reminder: boolean;

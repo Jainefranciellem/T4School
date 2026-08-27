@@ -31,29 +31,34 @@ Todas as rotas abaixo (exceto `/health` e `/auth/*`) exigem `Authorization: Bear
   `X-Internal-Secret: <INTERNAL_JOB_SECRET>` OU `Authorization: Bearer <CRON_SECRET>` (o header
   que a Vercel Cron envia sozinha) — não usa JWT.
 
-## Lembretes por WhatsApp
+## Lembretes por WhatsApp e email
 
-Configure `whatsapp_phone_id` e `whatsapp_token` (WhatsApp Business Cloud API) via `PUT /settings`
-— são as credenciais que a tela de Configurações do frontend salva. Com isso definido:
+Configure via `PUT /settings` (mesma tela de Configurações do frontend):
+- `whatsapp_phone_id` + `whatsapp_token` (WhatsApp Business Cloud API)
+- `resend_api_key` + `email_from` (conta grátis em resend.com; sem domínio próprio verificado,
+  use `onboarding@resend.dev` como remetente)
+
+Os dois canais são **independentes** — `src/lib/notify-student.ts` tenta cada um que estiver
+configurado, e a falha ou ausência de um não afeta o outro. Com pelo menos um configurado:
 
 - O agendamento do job varia por ambiente de deploy — veja `DEPLOY.md`:
   - **Docker/self-host** (Render, Railway, local): `node-cron` in-process (`REMINDER_JOB_CRON`
     no `.env`, padrão a cada 15 min), configurado em `src/server.ts`.
-  - **Vercel** (serverless, sem processo contínuo): **Vercel Cron**, configurado em
-    `backend/vercel.json` (`crons`), chamando `GET /internal/jobs/reminders`.
+  - **Vercel** (serverless, sem processo contínuo): **Vercel Cron** (1x/dia, insuficiente pro 2º
+    lembrete — veja a seção de Push abaixo) + o workflow do GitHub Actions (a cada 5 min).
 - O job varre aulas `Agendada`/`Confirmada` com `enviar_notificacao=true` e dispara
-  `template_reminder` quando faltam `reminder_hours` horas para a aula (1º lembrete). Cada envio
-  marca `lembrete_enviado`/`lembrete_dobrado_enviado` na aula para não duplicar.
+  `template_reminder` (WhatsApp + email) quando faltam `reminder_hours` horas para a aula (1º
+  lembrete). Cada envio marca `lembrete_enviado`/`lembrete_dobrado_enviado` na aula pra não duplicar.
 - O **2º lembrete** (`double_reminder`, `double_reminder_minutes` antes da aula — padrão 15 min)
-  dispara **dois canais ao mesmo tempo**: WhatsApp pro aluno (se configurado) e **push pro
-  professor** (todos os `DeviceToken` cadastrados). Esse 2º lembrete é independente do 1º — funciona
-  mesmo se o WhatsApp nunca foi configurado, ou se a aula foi criada a menos de `reminder_hours`
+  dispara **três canais ao mesmo tempo**: WhatsApp + email pro aluno, e **push pro professor**
+  (todos os `DeviceToken` cadastrados). É independente do 1º lembrete — funciona mesmo se
+  WhatsApp/email nunca foram configurados, ou se a aula foi criada a menos de `reminder_hours`
   de antecedência.
 - Confirmar (`status: "Confirmada"`) ou cancelar (`status: "Cancelada"`) uma aula via
-  `PUT /lessons/:id` dispara `template_confirmed`/`template_cancelled` na hora, de forma síncrona
-  — isso funciona igual em qualquer ambiente, não depende do cron.
-- Mensagens usam a API de texto livre do Graph API (`type: "text"`) — fora da janela de 24h de
-  atendimento do WhatsApp, a Meta exige um *message template* pré-aprovado; para produção em escala
+  `PUT /lessons/:id` dispara `template_confirmed`/`template_cancelled` (WhatsApp + email) na hora,
+  de forma síncrona — isso funciona igual em qualquer ambiente, não depende do cron.
+- Mensagens de WhatsApp usam a API de texto livre do Graph API (`type: "text"`) — fora da janela de
+  24h de atendimento, a Meta exige um *message template* pré-aprovado; para produção em escala
   vale migrar `sendWhatsAppMessage` (`src/lib/whatsapp.ts`) para enviar `type: "template"`.
 
 ## Push para o professor

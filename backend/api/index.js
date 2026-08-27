@@ -217,31 +217,87 @@ async function sendWhatsAppMessage({
   }
 }
 
+// src/lib/email.ts
+async function sendEmail({ apiKey, from, to, subject, text }) {
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({ from, to, subject, text })
+  });
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Falha ao enviar email (${response.status}): ${body}`);
+  }
+}
+
 // src/lib/message-template.ts
 function renderTemplate(template, vars) {
   return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_match, key) => vars[key] ?? "");
+}
+
+// src/lib/notify-student.ts
+async function notifyStudent(settings, student, template, vars, emailSubject, logger) {
+  let sent = 0;
+  let failed = 0;
+  const message = renderTemplate(template, vars);
+  if (settings.whatsapp_phone_id && settings.whatsapp_token) {
+    try {
+      await sendWhatsAppMessage({
+        phoneNumberId: settings.whatsapp_phone_id,
+        accessToken: settings.whatsapp_token,
+        to: student.telefone,
+        message
+      });
+      sent++;
+    } catch (error) {
+      failed++;
+      logger.error({ err: error }, "Falha ao enviar WhatsApp");
+    }
+  }
+  if (settings.resend_api_key && settings.email_from) {
+    try {
+      await sendEmail({
+        apiKey: settings.resend_api_key,
+        from: settings.email_from,
+        to: student.email,
+        subject: emailSubject,
+        text: message
+      });
+      sent++;
+    } catch (error) {
+      failed++;
+      logger.error({ err: error }, "Falha ao enviar email");
+    }
+  }
+  return { sent, failed };
 }
 
 // src/routes/lessons.routes.ts
 async function notifyStatusChange(app, lesson) {
   if (lesson.status !== "Confirmada" && lesson.status !== "Cancelada") return;
   const settings = await app.prisma.settings.findUnique({ where: { id: "singleton" } });
-  if (!settings?.whatsapp_phone_id || !settings.whatsapp_token) return;
+  if (!settings) return;
   const student = await app.prisma.student.findUnique({ where: { id: lesson.aluno_id } });
   if (!student) return;
   const template = lesson.status === "Confirmada" ? settings.template_confirmed : settings.template_cancelled;
-  await sendWhatsAppMessage({
-    phoneNumberId: settings.whatsapp_phone_id,
-    accessToken: settings.whatsapp_token,
-    to: student.telefone,
-    message: renderTemplate(template, {
+  const subject = lesson.status === "Confirmada" ? "Aula confirmada" : "Aula cancelada";
+  await notifyStudent(
+    settings,
+    student,
+    template,
+    {
       nome: student.nome,
       hora: lesson.hora,
       local: lesson.local,
       instrutor: lesson.instrutor,
       data: lesson.data
-    })
-  });
+    },
+    subject,
+    app.log
+  );
 }
 async function lessonsRoutes(app) {
   app.addHook("preHandler", requireAuth);
@@ -339,6 +395,8 @@ import { z as z6 } from "zod";
 var updateSettingsSchema = z6.object({
   whatsapp_phone_id: z6.string().optional(),
   whatsapp_token: z6.string().optional(),
+  resend_api_key: z6.string().optional(),
+  email_from: z6.string().min(1).optional(),
   send_reminders: z6.boolean().optional(),
   reminder_hours: z6.number().int().min(1).max(72).optional(),
   double_reminder: z6.boolean().optional(),
@@ -452,7 +510,6 @@ async function runReminderJob(prisma, logger) {
   if (!settings || !settings.send_reminders) {
     return { sent: 0, failed: 0, skippedReason: "Lembretes desativados nas configura\xE7\xF5es" };
   }
-  const whatsappConfigured = Boolean(settings.whatsapp_phone_id && settings.whatsapp_token);
   const now = /* @__PURE__ */ new Date();
   const candidates = await prisma.lesson.findMany({
     where: {
@@ -475,39 +532,33 @@ async function runReminderJob(prisma, logger) {
       instrutor: lesson.instrutor,
       data: lesson.data
     };
-    const isFirstTierDue = whatsappConfigured && !lesson.lembrete_enviado && remainingHours <= settings.reminder_hours;
+    const isFirstTierDue = !lesson.lembrete_enviado && remainingHours <= settings.reminder_hours;
     const isSecondTierDue = settings.double_reminder && !lesson.lembrete_dobrado_enviado && remainingMinutes <= settings.double_reminder_minutes;
     if (isFirstTierDue) {
-      try {
-        await sendWhatsAppMessage({
-          phoneNumberId: settings.whatsapp_phone_id,
-          accessToken: settings.whatsapp_token,
-          to: lesson.student.telefone,
-          message: renderTemplate(settings.template_reminder, vars)
-        });
-        await prisma.lesson.update({ where: { id: lesson.id }, data: { lembrete_enviado: true } });
-        sent++;
-      } catch (error) {
-        failed++;
-        logger.error({ err: error, lessonId: lesson.id }, "Falha ao enviar lembrete de WhatsApp");
-      }
+      const result = await notifyStudent(
+        settings,
+        lesson.student,
+        settings.template_reminder,
+        vars,
+        "Lembrete de aula",
+        logger
+      );
+      sent += result.sent;
+      failed += result.failed;
+      await prisma.lesson.update({ where: { id: lesson.id }, data: { lembrete_enviado: true } });
       continue;
     }
     if (isSecondTierDue) {
-      if (whatsappConfigured) {
-        try {
-          await sendWhatsAppMessage({
-            phoneNumberId: settings.whatsapp_phone_id,
-            accessToken: settings.whatsapp_token,
-            to: lesson.student.telefone,
-            message: renderTemplate(settings.template_reminder, vars)
-          });
-          sent++;
-        } catch (error) {
-          failed++;
-          logger.error({ err: error, lessonId: lesson.id }, "Falha ao enviar lembrete duplo de WhatsApp");
-        }
-      }
+      const result = await notifyStudent(
+        settings,
+        lesson.student,
+        settings.template_reminder,
+        vars,
+        "Sua aula est\xE1 chegando",
+        logger
+      );
+      sent += result.sent;
+      failed += result.failed;
       try {
         await notifyProfessors(prisma, {
           title: "Aula chegando",

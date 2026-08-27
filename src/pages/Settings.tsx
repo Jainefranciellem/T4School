@@ -12,6 +12,7 @@ import { getSettings, updateSettings } from '@/lib/settings.service';
 import { AppSettings } from '@/types';
 import {
   MessageCircle,
+  Mail,
   Bell,
   Clock,
   Save,
@@ -123,6 +124,59 @@ const Settings: React.FC = () => {
             >
               Documentação <ExternalLink className="h-3 w-3" />
             </a>
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Email settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5 text-primary" />
+            Email
+          </CardTitle>
+          <CardDescription>
+            Alternativa ou complemento ao WhatsApp — envia o mesmo lembrete por email via Resend
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="resend-key">Resend API Key</Label>
+              <Input
+                id="resend-key"
+                type="password"
+                placeholder="re_••••••••••••"
+                value={form.resend_api_key ?? ''}
+                onChange={(e) =>
+                  setForm((prev) => prev && { ...prev, resend_api_key: e.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email-from">Remetente</Label>
+              <Input
+                id="email-from"
+                placeholder="aulas@seudominio.com"
+                value={form.email_from ?? ''}
+                onChange={(e) =>
+                  setForm((prev) => prev && { ...prev, email_from: e.target.value })
+                }
+              />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Crie uma conta gratuita em{' '}
+            <a
+              href="https://resend.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline inline-flex items-center gap-1"
+            >
+              resend.com <ExternalLink className="h-3 w-3" />
+            </a>{' '}
+            para gerar a API Key. Sem verificar domínio próprio, use{' '}
+            <code className="text-foreground">onboarding@resend.dev</code> como remetente.
           </p>
         </CardContent>
       </Card>

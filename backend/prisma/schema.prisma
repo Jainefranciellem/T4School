@@ -94,6 +94,8 @@ model Settings {
   id                    String  @id @default("singleton")
   whatsapp_phone_id     String?
   whatsapp_token        String?
+  resend_api_key        String?
+  email_from            String?
   send_reminders          Boolean @default(true)
   reminder_hours          Int     @default(24)
   double_reminder         Boolean @default(true)
