@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LessonCard } from '@/components/lessons/LessonCard';
 import { CreateLessonModal } from '@/components/lessons/CreateLessonModal';
-import { Lesson } from '@/data/mockData';
+import { Lesson } from '@/types';
 import { cn } from '@/lib/utils';
 import {
   ChevronLeft,
@@ -17,7 +17,8 @@ import {
 import { format, addWeeks, subWeeks, startOfWeek, endOfWeek, eachDayOfInterval, isToday, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { AulasService, Aula } from '@/lib/aulas.service';
+import { AulasService } from '@/lib/aulas.service';
+import { Aula } from '@/types';
 import { listarAlunos } from '@/lib/students.service';
 import { useToast } from '@/hooks/use-toast';
 
@@ -131,7 +132,8 @@ const Agenda: React.FC = () => {
         id: lesson.id,
         data: {
           status: 'Cancelada',
-          notificacao_enviada: true
+          notificacao_enviada: false,
+          enviar_notificacao: true
         }
       },
       {

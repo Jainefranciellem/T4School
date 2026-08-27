@@ -1,0 +1,104 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  INSTRUTOR
+}
+
+enum StudentStatus {
+  Ativo
+  Inativo
+}
+
+enum LessonStatus {
+  Agendada
+  Confirmada
+  Compareceu
+  Faltou
+  Cancelada
+}
+
+model User {
+  id            String        @id @default(uuid())
+  email         String        @unique
+  password_hash String
+  nome          String
+  role          Role          @default(ADMIN)
+  device_tokens DeviceToken[]
+  created_at    DateTime      @default(now())
+}
+
+model Plan {
+  id            String   @id @default(uuid())
+  nome          String
+  qtd_aulas     Int
+  validade_dias Int
+  preco         Decimal  @db.Decimal(10, 2)
+  created_at    DateTime @default(now())
+}
+
+model Student {
+  id              String        @id @default(uuid())
+  nome            String
+  telefone        String
+  email           String
+  plano           String
+  aulas_restantes Int           @default(0)
+  status          StudentStatus @default(Ativo)
+  avatar          String?
+  lessons         Lesson[]
+  created_at      DateTime      @default(now())
+  updated_at      DateTime      @updatedAt
+}
+
+model Lesson {
+  id                  String       @id @default(uuid())
+  aluno_id            String
+  student             Student      @relation(fields: [aluno_id], references: [id], onDelete: Cascade)
+  data                String
+  hora                String
+  local               String
+  instrutor           String
+  status              LessonStatus @default(Agendada)
+  observacoes         String?
+  notificacao_enviada Boolean      @default(false)
+  enviar_notificacao  Boolean      @default(true)
+  lembrete_enviado         Boolean @default(false)
+  lembrete_dobrado_enviado Boolean @default(false)
+  created_at          DateTime     @default(now())
+  updated_at          DateTime     @updatedAt
+
+  @@index([data])
+  @@index([aluno_id])
+}
+
+model DeviceToken {
+  id         String   @id @default(uuid())
+  user_id    String
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  token      String   @unique
+  platform   String
+  created_at DateTime @default(now())
+}
+
+model Settings {
+  id                    String  @id @default("singleton")
+  whatsapp_phone_id     String?
+  whatsapp_token        String?
+  send_reminders        Boolean @default(true)
+  reminder_hours        Int     @default(24)
+  double_reminder       Boolean @default(true)
+  double_reminder_hours Int     @default(1)
+  template_reminder     String  @default("Olá {{nome}}! Lembrete: sua aula de surf é hoje às {{hora}} no {{local}} com {{instrutor}}.")
+  template_confirmed    String  @default("Presença confirmada! Te esperamos na aula de hoje.")
+  template_cancelled    String  @default("Tudo bem — registramos sua ausência. Entre em contato para remarcar.")
+}

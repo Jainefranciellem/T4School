@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
-import { pedirPermissaoNotificacao } from '@/lib/notifications.service';
 import { salvarDispositivoProfessor } from '@/lib/professor.service';
+import logo from '@/assets/logo.png';
+import { pedirPermissaoNotificacaoProfessor } from '@/lib/firebase';
 
 const WaveBackground = () => (
   <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -79,16 +80,20 @@ const Login: React.FC = () => {
     setIsSubmitting(false);
 
     if (result.success) {
-      const token = await pedirPermissaoNotificacao();
-
       toast({
         title: 'Bem-vindo! 🏄',
         description: 'Login realizado com sucesso.',
       });
 
-      if (token) {
-        await salvarDispositivoProfessor(token);
+      try {
+        const token = await pedirPermissaoNotificacaoProfessor();
+        if (token) {
+          await salvarDispositivoProfessor(token);
+        }
+      } catch (error) {
+        console.error('Erro ao registrar notificações push:', error);
       }
+
       navigate('/dashboard');
     } else {
       toast({
@@ -107,7 +112,7 @@ const Login: React.FC = () => {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-32 h-32 rounded-2xl bg-primary shadow-ocean mb-4">
-            <img src="/logo.png" alt="Logo" className="w-32 h-32 object-contain" />
+            <img src={logo} alt="Logo" className="w-32 h-32 object-contain" />
 
           </div>
           <p className="text-muted-foreground mt-2">
@@ -184,11 +189,6 @@ const Login: React.FC = () => {
               </Button>
             </form>
 
-            <div className="mt-6 pt-6 border-t border-border">
-              <p className="text-sm text-center text-muted-foreground">
-                <strong>Demo:</strong> admin@T4School.com / 123456
-              </p>
-            </div>
           </CardContent>
         </Card>
 

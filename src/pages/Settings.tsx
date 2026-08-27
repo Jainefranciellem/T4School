@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,60 +7,64 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { getSettings, updateSettings } from '@/lib/settings.service';
+import { AppSettings } from '@/types';
 import {
-  Settings as SettingsIcon,
-  Link,
   MessageCircle,
   Bell,
   Clock,
   Save,
   Loader2,
   ExternalLink,
-  AlertCircle,
 } from 'lucide-react';
 
 const Settings: React.FC = () => {
   const { toast } = useToast();
-  const [isSaving, setIsSaving] = useState(false);
+  const queryClient = useQueryClient();
 
-  const [integrations, setIntegrations] = useState({
-    baserowApiUrl: '',
-    n8nWebhookBase: '',
-    whatsappPhoneId: '',
-    whatsappToken: '',
+  const { data: settings, isLoading } = useQuery({
+    queryKey: ['settings'],
+    queryFn: getSettings,
   });
 
-  const [notifications, setNotifications] = useState({
-    sendReminders: true,
-    reminderHours: 24,
-    doubleReminder: true,
-    doubleReminderHours: 1,
+  const [form, setForm] = useState<AppSettings | null>(null);
+
+  useEffect(() => {
+    if (settings) setForm(settings);
+  }, [settings]);
+
+  const saveMutation = useMutation({
+    mutationFn: (data: Partial<AppSettings>) => updateSettings(data),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['settings'], updated);
+      toast({
+        title: 'Configurações salvas!',
+        description: 'Suas alterações foram aplicadas com sucesso.',
+      });
+    },
+    onError: () => {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível salvar as configurações.',
+        variant: 'destructive',
+      });
+    },
   });
 
-  const [templates, setTemplates] = useState({
-    reminder: `🏄‍♀️ Olá {{nome}}! Lembrete: sua aula de surf é hoje às {{hora}} no {{local}} com {{instrutor}}.
-Responda 1 para confirmar ou 2 para informar que não irá.`,
-    confirmed: '✅ Presença confirmada! Te esperamos na aula de hoje.',
-    cancelled: 'Tudo bem — registramos sua ausência. Entre em contato para remarcar.',
-  });
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    // In production, this would save to the backend
-    localStorage.setItem('T4School_settings', JSON.stringify({
-      integrations,
-      notifications,
-      templates,
-    }));
-
-    toast({
-      title: 'Configurações salvas!',
-      description: 'Suas alterações foram aplicadas com sucesso.',
-    });
-    setIsSaving(false);
+  const handleSave = () => {
+    if (!form) return;
+    const { id, ...data } = form;
+    saveMutation.mutate(data);
   };
+
+  if (isLoading || !form) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in max-w-4xl">
@@ -76,95 +80,50 @@ Responda 1 para confirmar ou 2 para informar que não irá.`,
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Link className="h-5 w-5 text-primary" />
-            Integrações
+            <MessageCircle className="h-5 w-5 text-primary" />
+            WhatsApp
           </CardTitle>
           <CardDescription>
-            Configure as URLs e tokens para conectar com Baserow, n8n e WhatsApp
+            Credenciais do WhatsApp Business Cloud API usadas para enviar lembretes
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="p-4 bg-muted rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-warning mt-0.5" />
-            <div className="text-sm">
-              <p className="font-medium">Modo de demonstração</p>
-              <p className="text-muted-foreground">
-                As integrações estão usando dados simulados. Configure as variáveis abaixo para
-                conectar aos serviços reais.
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="baserow">Baserow API URL</Label>
+              <Label htmlFor="phone">WhatsApp Phone ID</Label>
               <Input
-                id="baserow"
-                placeholder="https://api.baserow.io/api/"
-                value={integrations.baserowApiUrl}
+                id="phone"
+                placeholder="1234567890"
+                value={form.whatsapp_phone_id ?? ''}
                 onChange={(e) =>
-                  setIntegrations((prev) => ({ ...prev, baserowApiUrl: e.target.value }))
+                  setForm((prev) => prev && { ...prev, whatsapp_phone_id: e.target.value })
                 }
               />
-              <p className="text-xs text-muted-foreground">
-                URL base da API do Baserow para armazenar dados
-              </p>
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="n8n">n8n Webhook Base URL</Label>
+              <Label htmlFor="token">WhatsApp Token</Label>
               <Input
-                id="n8n"
-                placeholder="https://n8n.example.com/webhook/"
-                value={integrations.n8nWebhookBase}
+                id="token"
+                type="password"
+                placeholder="••••••••••••"
+                value={form.whatsapp_token ?? ''}
                 onChange={(e) =>
-                  setIntegrations((prev) => ({ ...prev, n8nWebhookBase: e.target.value }))
+                  setForm((prev) => prev && { ...prev, whatsapp_token: e.target.value })
                 }
               />
-              <p className="text-xs text-muted-foreground">
-                URL base dos webhooks do n8n para automações
-              </p>
             </div>
-
-            <Separator />
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="phone">WhatsApp Phone ID</Label>
-                <Input
-                  id="phone"
-                  placeholder="1234567890"
-                  value={integrations.whatsappPhoneId}
-                  onChange={(e) =>
-                    setIntegrations((prev) => ({ ...prev, whatsappPhoneId: e.target.value }))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="token">WhatsApp Token</Label>
-                <Input
-                  id="token"
-                  type="password"
-                  placeholder="••••••••••••"
-                  value={integrations.whatsappToken}
-                  onChange={(e) =>
-                    setIntegrations((prev) => ({ ...prev, whatsappToken: e.target.value }))
-                  }
-                />
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Credenciais do WhatsApp Business Cloud API{' '}
-              <a
-                href="https://developers.facebook.com/docs/whatsapp/cloud-api"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline inline-flex items-center gap-1"
-              >
-                Documentação <ExternalLink className="h-3 w-3" />
-              </a>
-            </p>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Credenciais do WhatsApp Business Cloud API{' '}
+            <a
+              href="https://developers.facebook.com/docs/whatsapp/cloud-api"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline inline-flex items-center gap-1"
+            >
+              Documentação <ExternalLink className="h-3 w-3" />
+            </a>
+          </p>
         </CardContent>
       </Card>
 
@@ -189,14 +148,14 @@ Responda 1 para confirmar ou 2 para informar que não irá.`,
             </div>
             <Switch
               id="reminders"
-              checked={notifications.sendReminders}
+              checked={form.send_reminders}
               onCheckedChange={(checked) =>
-                setNotifications((prev) => ({ ...prev, sendReminders: checked }))
+                setForm((prev) => prev && { ...prev, send_reminders: checked })
               }
             />
           </div>
 
-          {notifications.sendReminders && (
+          {form.send_reminders && (
             <>
               <div className="space-y-2">
                 <Label htmlFor="hours" className="flex items-center gap-2">
@@ -208,12 +167,11 @@ Responda 1 para confirmar ou 2 para informar que não irá.`,
                   type="number"
                   min="1"
                   max="72"
-                  value={notifications.reminderHours}
+                  value={form.reminder_hours}
                   onChange={(e) =>
-                    setNotifications((prev) => ({
-                      ...prev,
-                      reminderHours: parseInt(e.target.value) || 24,
-                    }))
+                    setForm((prev) =>
+                      prev && { ...prev, reminder_hours: parseInt(e.target.value) || 24 }
+                    )
                   }
                   className="w-32"
                 />
@@ -228,14 +186,14 @@ Responda 1 para confirmar ou 2 para informar que não irá.`,
                 </div>
                 <Switch
                   id="double"
-                  checked={notifications.doubleReminder}
+                  checked={form.double_reminder}
                   onCheckedChange={(checked) =>
-                    setNotifications((prev) => ({ ...prev, doubleReminder: checked }))
+                    setForm((prev) => prev && { ...prev, double_reminder: checked })
                   }
                 />
               </div>
 
-              {notifications.doubleReminder && (
+              {form.double_reminder && (
                 <div className="space-y-2">
                   <Label htmlFor="hours2">Horas antes (segundo lembrete)</Label>
                   <Input
@@ -243,12 +201,11 @@ Responda 1 para confirmar ou 2 para informar que não irá.`,
                     type="number"
                     min="1"
                     max="24"
-                    value={notifications.doubleReminderHours}
+                    value={form.double_reminder_hours}
                     onChange={(e) =>
-                      setNotifications((prev) => ({
-                        ...prev,
-                        doubleReminderHours: parseInt(e.target.value) || 1,
-                      }))
+                      setForm((prev) =>
+                        prev && { ...prev, double_reminder_hours: parseInt(e.target.value) || 1 }
+                      )
                     }
                     className="w-32"
                   />
@@ -276,9 +233,9 @@ Responda 1 para confirmar ou 2 para informar que não irá.`,
             <Textarea
               id="reminder-template"
               rows={4}
-              value={templates.reminder}
+              value={form.template_reminder}
               onChange={(e) =>
-                setTemplates((prev) => ({ ...prev, reminder: e.target.value }))
+                setForm((prev) => prev && { ...prev, template_reminder: e.target.value })
               }
             />
             <p className="text-xs text-muted-foreground">
@@ -291,9 +248,9 @@ Responda 1 para confirmar ou 2 para informar que não irá.`,
             <Textarea
               id="confirmed-template"
               rows={2}
-              value={templates.confirmed}
+              value={form.template_confirmed}
               onChange={(e) =>
-                setTemplates((prev) => ({ ...prev, confirmed: e.target.value }))
+                setForm((prev) => prev && { ...prev, template_confirmed: e.target.value })
               }
             />
           </div>
@@ -303,9 +260,9 @@ Responda 1 para confirmar ou 2 para informar que não irá.`,
             <Textarea
               id="cancelled-template"
               rows={2}
-              value={templates.cancelled}
+              value={form.template_cancelled}
               onChange={(e) =>
-                setTemplates((prev) => ({ ...prev, cancelled: e.target.value }))
+                setForm((prev) => prev && { ...prev, template_cancelled: e.target.value })
               }
             />
           </div>
@@ -314,8 +271,8 @@ Responda 1 para confirmar ou 2 para informar que não irá.`,
 
       {/* Save button */}
       <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={isSaving} size="lg">
-          {isSaving ? (
+        <Button onClick={handleSave} disabled={saveMutation.isPending} size="lg">
+          {saveMutation.isPending ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
               Salvando...

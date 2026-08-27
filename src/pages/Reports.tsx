@@ -19,7 +19,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { mockStudents, mockLessons, getStudentById } from '@/data/mockData';
+import { useQuery } from '@tanstack/react-query';
+import { listarAlunos } from '@/lib/students.service';
+import { AulasService } from '@/lib/aulas.service';
 import { useToast } from '@/hooks/use-toast';
 import {
   BarChart3,
@@ -30,6 +32,7 @@ import {
   Calendar,
   CheckCircle,
   XCircle,
+  Loader2,
 } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -42,8 +45,26 @@ const Reports: React.FC = () => {
   });
   const [studentFilter, setStudentFilter] = useState<string>('all');
 
+  const { data: students = [], isLoading: isLoadingStudents } = useQuery({
+    queryKey: ['alunos'],
+    queryFn: listarAlunos,
+  });
+
+  const { data: lessons = [], isLoading: isLoadingLessons } = useQuery({
+    queryKey: ['aulas'],
+    queryFn: AulasService.listarAulas,
+  });
+
+  if (isLoadingStudents || isLoadingLessons) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   // Calculate statistics
-  const filteredLessons = mockLessons.filter((lesson) => {
+  const filteredLessons = lessons.filter((lesson) => {
     const lessonDate = new Date(lesson.data);
     const startDate = new Date(dateRange.start);
     const endDate = new Date(dateRange.end);
@@ -68,7 +89,7 @@ const Reports: React.FC = () => {
     : 0;
 
   // Group by student for the table
-  const studentStats = mockStudents.map((student) => {
+  const studentStats = students.map((student) => {
     const studentLessons = filteredLessons.filter((l) => l.aluno_id === student.id);
     const attended = studentLessons.filter((l) => l.status === 'Compareceu').length;
     const missed = studentLessons.filter((l) => l.status === 'Faltou').length;
@@ -159,7 +180,7 @@ const Reports: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os alunos</SelectItem>
-                  {mockStudents.map((student) => (
+                  {students.map((student) => (
                     <SelectItem key={student.id} value={student.id}>
                       {student.nome}
                     </SelectItem>

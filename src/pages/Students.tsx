@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -27,7 +28,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { listarAlunos, criarAluno, atualizarAluno, excluirAluno, type Student } from '@/lib/students.service';
+import { listarAlunos, criarAluno, atualizarAluno, excluirAluno } from '@/lib/students.service';
+import { Student } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import {
   Search,
@@ -49,49 +51,72 @@ import {
 const Students: React.FC = () => {
   const { toast } = useToast();
 
-  const [students, setStudents] = useState<Student[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] =
     useState<'all' | 'Ativo' | 'Inativo'>('all');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Delete confirmation state
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const [formData, setFormData] = useState({
     nome: '',
     telefone: '',
     email: '',
-    plano: 'mensal' as 'mensal' | 'trimestral' | 'avulso',
+    plano: 'Pacote 4 Aulas',
     aulas_restantes: 4,
     status: 'Ativo' as 'Ativo' | 'Inativo',
   });
 
   /* =======================
-     LOAD ALUNOS
+     REACT QUERY
   ======================= */
 
-  const carregarAlunos = async () => {
-    try {
-      const data = await listarAlunos();
-      setStudents(data);
-    } catch {
-      toast({
-        title: 'Erro',
-        description: 'Erro ao carregar alunos',
-        variant: 'destructive',
-      });
-    }
-  };
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    carregarAlunos();
-  }, []);
+  const { data: students = [], isLoading, isError } = useQuery({
+    queryKey: ['alunos'],
+    queryFn: listarAlunos,
+  });
+
+  const createStudentMutation = useMutation({
+    mutationFn: (data: any) => criarAluno({ ...data, status: 'Ativo' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['alunos'] });
+      toast({ title: 'Aluno cadastrado!', description: 'Aluno foi cadastrado com sucesso.' });
+      setIsModalOpen(false);
+    },
+    onError: () => {
+      toast({ title: 'Erro', description: 'Erro ao cadastrar aluno', variant: 'destructive' });
+    }
+  });
+
+  const updateStudentMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => atualizarAluno(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['alunos'] });
+      toast({ title: 'Aluno atualizado!', description: 'Aluno foi atualizado com sucesso.' });
+      setIsModalOpen(false);
+    },
+    onError: () => {
+      toast({ title: 'Erro', description: 'Erro ao atualizar aluno', variant: 'destructive' });
+    }
+  });
+
+  const deleteStudentMutation = useMutation({
+    mutationFn: excluirAluno,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['alunos'] });
+      toast({ title: 'Aluno excluído', description: 'O aluno foi removido com sucesso.' });
+      setIsDeleteModalOpen(false);
+    },
+    onError: () => {
+      toast({ title: 'Erro', description: 'Erro ao excluir aluno.', variant: 'destructive' });
+    }
+  });
 
   /* =======================
      FILTROS
@@ -130,7 +155,7 @@ const Students: React.FC = () => {
         nome: '',
         telefone: '',
         email: '',
-        plano: 'mensal',
+        plano: 'Pacote 4 Aulas',
         aulas_restantes: 4,
         status: 'Ativo',
       });
@@ -155,40 +180,10 @@ const Students: React.FC = () => {
       return;
     }
 
-    try {
-      setIsSubmitting(true);
-
-      if (editingStudent) {
-        await atualizarAluno(editingStudent.id, {
-          ...formData,
-        });
-
-        toast({
-          title: 'Aluno atualizado!',
-          description: `${formData.nome} foi atualizado com sucesso.`,
-        });
-      } else {
-        await criarAluno({
-          ...formData,
-          status: 'Ativo',
-        });
-
-        toast({
-          title: 'Aluno cadastrado!',
-          description: `${formData.nome} foi cadastrado com sucesso.`,
-        });
-      }
-
-      await carregarAlunos();
-      setIsModalOpen(false);
-    } catch {
-      toast({
-        title: 'Erro',
-        description: editingStudent ? 'Erro ao atualizar aluno' : 'Erro ao salvar aluno',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSubmitting(false);
+    if (editingStudent) {
+      updateStudentMutation.mutate({ id: editingStudent.id, data: formData });
+    } else {
+      createStudentMutation.mutate(formData);
     }
   };
 
@@ -197,30 +192,10 @@ const Students: React.FC = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDelete = async () => {
+  const confirmDelete = () => {
     if (!studentToDelete) return;
-
-    try {
-      setIsDeleting(true);
-      await excluirAluno(studentToDelete.id);
-
-      toast({
-        title: 'Aluno excluído',
-        description: 'O aluno foi removido com sucesso.',
-      });
-
-      await carregarAlunos();
-      setIsDeleteModalOpen(false);
-    } catch (error) {
-      toast({
-        title: 'Erro',
-        description: 'Erro ao excluir aluno.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsDeleting(false);
-      setStudentToDelete(null);
-    }
+    deleteStudentMutation.mutate(studentToDelete.id);
+    setStudentToDelete(null);
   };
 
   /* =======================
@@ -426,7 +401,7 @@ const Students: React.FC = () => {
                   onValueChange={(value) =>
                     setFormData({
                       ...formData,
-                      plano: value as 'mensal' | 'trimestral' | 'avulso',
+                      plano: value,
                     })
                   }
                 >
@@ -434,17 +409,18 @@ const Students: React.FC = () => {
                     <SelectValue placeholder="Selecione o plano" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="mensal">Mensal</SelectItem>
-                    <SelectItem value="trimestral">Trimestral</SelectItem>
-                    <SelectItem value="avulso">Avulso</SelectItem>
+                    <SelectItem value="Aula Avulsa">Aula Avulsa</SelectItem>
+                    <SelectItem value="Pacote 4 Aulas">Pacote 4 Aulas</SelectItem>
+                    <SelectItem value="Pacote 6 Aulas">Pacote 6 Aulas</SelectItem>
+                    <SelectItem value="Pacote 10 Aulas">Pacote 10 Aulas</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
             <DialogFooter>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
+              <Button type="submit" disabled={createStudentMutation.isPending || updateStudentMutation.isPending}>
+                {createStudentMutation.isPending || updateStudentMutation.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     Salvando...
@@ -471,16 +447,16 @@ const Students: React.FC = () => {
             <Button
               variant="outline"
               onClick={() => setIsDeleteModalOpen(false)}
-              disabled={isDeleting}
+              disabled={deleteStudentMutation.isPending}
             >
               Cancelar
             </Button>
             <Button
               variant="destructive"
               onClick={confirmDelete}
-              disabled={isDeleting}
+              disabled={deleteStudentMutation.isPending}
             >
-              {isDeleting ? (
+              {deleteStudentMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   Excluindo...
@@ -492,7 +468,7 @@ const Students: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 };
 
