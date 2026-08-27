@@ -16,6 +16,7 @@ export interface Lesson {
   hora: string;
   local: string;
   instrutor: string;
+  tipo?: 'Surf' | 'SurfSkate';
   status: 'Agendada' | 'Confirmada' | 'Compareceu' | 'Faltou' | 'Cancelada';
   observacoes?: string;
   notificacao_enviada?: boolean;

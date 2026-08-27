@@ -22,6 +22,23 @@ async function main() {
   });
 
   console.log(`Usuário admin pronto: ${user.email}`);
+
+  const plans = [
+    { nome: 'Aula Avulsa', qtd_aulas: 1, validade_dias: 30, preco: 130 },
+    { nome: 'Pacote 4 Aulas', qtd_aulas: 4, validade_dias: 60, preco: 480 },
+    { nome: 'Pacote 6 Aulas', qtd_aulas: 6, validade_dias: 90, preco: 660 },
+    { nome: 'Pacote 10 Aulas', qtd_aulas: 10, validade_dias: 120, preco: 950 },
+  ];
+
+  for (const plan of plans) {
+    await prisma.plan.upsert({
+      where: { nome: plan.nome },
+      update: plan,
+      create: plan,
+    });
+  }
+
+  console.log(`${plans.length} planos prontos`);
 }
 
 main()

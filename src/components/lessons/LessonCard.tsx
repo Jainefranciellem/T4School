@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Lesson } from '@/types';
 import { Student } from '@/types';
 import { cn } from '@/lib/utils';
-import { Clock, MapPin, User, Check, X, RotateCcw, MessageCircle, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { Clock, MapPin, User, Check, X, RotateCcw, MessageCircle, MoreVertical, Edit, Trash2, Waves } from 'lucide-react';
+import { lessonTypeLabel } from '@/lib/constants';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -128,6 +129,10 @@ export const LessonCard: React.FC<LessonCardProps> = ({
             </div>
 
             <div className="space-y-1.5 text-sm text-muted-foreground mb-3">
+              <div className="flex items-center gap-2">
+                <Waves className="w-4 h-4" />
+                <span>{lessonTypeLabel(lesson.tipo)}</span>
+              </div>
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4" />
                 <span>{lesson.local}</span>

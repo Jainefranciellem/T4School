@@ -171,12 +171,14 @@ var lessonStatusSchema = z4.enum([
   "Faltou",
   "Cancelada"
 ]);
+var lessonTypeSchema = z4.enum(["Surf", "SurfSkate"]);
 var createLessonSchema = z4.object({
   aluno_id: z4.string().uuid(),
   data: z4.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use o formato yyyy-MM-dd"),
   hora: z4.string().regex(/^\d{2}:\d{2}$/, "Use o formato HH:mm"),
   local: z4.string().min(1),
   instrutor: z4.string().min(1),
+  tipo: lessonTypeSchema.default("Surf"),
   observacoes: z4.string().optional(),
   status: lessonStatusSchema.default("Agendada"),
   notificacao_enviada: z4.boolean().default(false),

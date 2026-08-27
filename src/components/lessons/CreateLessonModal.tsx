@@ -19,10 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { instructors, locations } from '@/lib/constants';
+import { instructors, locations, lessonTypes, getAvailableTimes } from '@/lib/constants';
 import { Lesson } from '@/types';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Calendar, Clock, MapPin, User, MessageCircle } from 'lucide-react';
+import { Loader2, Calendar, Clock, MapPin, User, MessageCircle, Waves } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { listarAlunos } from '@/lib/students.service';
 
@@ -45,6 +45,7 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
   const [formData, setFormData] = useState({
     id: '',
     aluno_id: '',
+    tipo: 'Surf' as 'Surf' | 'SurfSkate',
     data: '',
     hora: '',
     local: locations[0],
@@ -52,6 +53,8 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
     observacoes: '',
     notificar: true,
   });
+
+  const availableTimes = getAvailableTimes(formData.tipo, formData.data);
 
   // Fetch real students from the service
   const { data: students = [], isLoading: isLoadingStudents } = useQuery({
@@ -70,6 +73,7 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
         setFormData({
           id: editLesson.id,
           aluno_id: editLesson.aluno_id,
+          tipo: editLesson.tipo || 'Surf',
           data: editLesson.data,
           hora: editLesson.hora,
           local: editLesson.local,
@@ -82,6 +86,7 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
         setFormData({
           id: '',
           aluno_id: '',
+          tipo: 'Surf',
           data: '',
           hora: '',
           local: locations[0],
@@ -92,6 +97,25 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
       }
     }
   }, [isOpen, editLesson]);
+
+  // Troca tipo/data e limpa a hora se ela não fizer mais parte da grade real
+  // pro novo tipo/dia — só quando o usuário muda o campo, não ao carregar
+  // uma aula existente pra edição (isso é tratado no efeito acima).
+  const handleTipoChange = (tipo: 'Surf' | 'SurfSkate') => {
+    setFormData((prev) => ({
+      ...prev,
+      tipo,
+      hora: getAvailableTimes(tipo, prev.data).includes(prev.hora) ? prev.hora : '',
+    }));
+  };
+
+  const handleDataChange = (data: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      data,
+      hora: getAvailableTimes(prev.tipo, data).includes(prev.hora) ? prev.hora : '',
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,6 +144,7 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
       await onSave({
         id: editLesson ? editLesson.id : '',
         aluno_id: formData.aluno_id,
+        tipo: formData.tipo,
         data: formData.data,
         hora: formData.hora,
         local: formData.local,
@@ -161,6 +186,26 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          {/* Activity type */}
+          <div className="space-y-2">
+            <Label htmlFor="tipo" className="flex items-center gap-2">
+              <Waves className="w-4 h-4" />
+              Tipo de atividade
+            </Label>
+            <Select value={formData.tipo} onValueChange={handleTipoChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                {lessonTypes.map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Student select */}
           <div className="space-y-2">
             <Label htmlFor="aluno" className="flex items-center gap-2">
@@ -206,9 +251,7 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
                 id="data"
                 type="date"
                 value={formData.data}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, data: e.target.value }))
-                }
+                onChange={(e) => handleDataChange(e.target.value)}
               />
             </div>
             <div className="space-y-2">
@@ -216,14 +259,30 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
                 <Clock className="w-4 h-4" />
                 Hora *
               </Label>
-              <Input
-                id="hora"
-                type="time"
+              <Select
                 value={formData.hora}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, hora: e.target.value }))
-                }
-              />
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, hora: value }))}
+                disabled={!formData.data || availableTimes.length === 0}
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      !formData.data
+                        ? 'Selecione a data'
+                        : availableTimes.length === 0
+                        ? 'Sem horários nesse dia'
+                        : 'Selecione o horário'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableTimes.map((time) => (
+                    <SelectItem key={time} value={time}>
+                      {time}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

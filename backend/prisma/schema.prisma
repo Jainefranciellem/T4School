@@ -27,6 +27,11 @@ enum LessonStatus {
   Cancelada
 }
 
+enum LessonType {
+  Surf
+  SurfSkate
+}
+
 model User {
   id            String        @id @default(uuid())
   email         String        @unique
@@ -39,7 +44,7 @@ model User {
 
 model Plan {
   id            String   @id @default(uuid())
-  nome          String
+  nome          String   @unique
   qtd_aulas     Int
   validade_dias Int
   preco         Decimal  @db.Decimal(10, 2)
@@ -68,6 +73,7 @@ model Lesson {
   hora                String
   local               String
   instrutor           String
+  tipo                LessonType   @default(Surf)
   status              LessonStatus @default(Agendada)
   observacoes         String?
   notificacao_enviada Boolean      @default(false)

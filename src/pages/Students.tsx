@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { listarAlunos, criarAluno, atualizarAluno, excluirAluno } from '@/lib/students.service';
+import { listarPlanos } from '@/lib/plans.service';
 import { Student } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -66,8 +67,8 @@ const Students: React.FC = () => {
     nome: '',
     telefone: '',
     email: '',
-    plano: 'Pacote 4 Aulas',
-    aulas_restantes: 4,
+    plano: '',
+    aulas_restantes: 0,
     status: 'Ativo' as 'Ativo' | 'Inativo',
   });
 
@@ -81,6 +82,20 @@ const Students: React.FC = () => {
     queryKey: ['alunos'],
     queryFn: listarAlunos,
   });
+
+  const { data: plans = [] } = useQuery({
+    queryKey: ['plans'],
+    queryFn: listarPlanos,
+  });
+
+  const handlePlanoChange = (nome: string) => {
+    const plan = plans.find((p) => p.nome === nome);
+    setFormData((prev) => ({
+      ...prev,
+      plano: nome,
+      aulas_restantes: plan ? plan.qtd_aulas : prev.aulas_restantes,
+    }));
+  };
 
   const createStudentMutation = useMutation({
     mutationFn: (data: any) => criarAluno({ ...data, status: 'Ativo' }),
@@ -155,8 +170,8 @@ const Students: React.FC = () => {
         nome: '',
         telefone: '',
         email: '',
-        plano: 'Pacote 4 Aulas',
-        aulas_restantes: 4,
+        plano: '',
+        aulas_restantes: 0,
         status: 'Ativo',
       });
     }
@@ -171,7 +186,7 @@ const Students: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.nome || !formData.telefone || !formData.email) {
+    if (!formData.nome || !formData.telefone || !formData.email || !formData.plano) {
       toast({
         title: 'Campos obrigatórios',
         description: 'Preencha todos os campos.',
@@ -396,23 +411,21 @@ const Students: React.FC = () => {
 
               <div className="space-y-2">
                 <Label>Plano</Label>
-                <Select
-                  value={formData.plano}
-                  onValueChange={(value) =>
-                    setFormData({
-                      ...formData,
-                      plano: value,
-                    })
-                  }
-                >
+                <Select value={formData.plano} onValueChange={handlePlanoChange}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o plano" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Aula Avulsa">Aula Avulsa</SelectItem>
-                    <SelectItem value="Pacote 4 Aulas">Pacote 4 Aulas</SelectItem>
-                    <SelectItem value="Pacote 6 Aulas">Pacote 6 Aulas</SelectItem>
-                    <SelectItem value="Pacote 10 Aulas">Pacote 10 Aulas</SelectItem>
+                    {plans.map((plan) => (
+                      <SelectItem key={plan.id} value={plan.nome}>
+                        {plan.nome} — R$ {Number(plan.preco).toFixed(2)}
+                      </SelectItem>
+                    ))}
+                    {plans.length === 0 && (
+                      <div className="p-2 text-sm text-muted-foreground text-center">
+                        Nenhum plano cadastrado
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
