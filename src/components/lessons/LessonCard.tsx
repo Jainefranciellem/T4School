@@ -2,8 +2,8 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Lesson, getStudentById } from '@/data/mockData';
-import { Student } from '@/lib/students.service';
+import { Lesson } from '@/types';
+import { Student } from '@/types';
 import { cn } from '@/lib/utils';
 import { Clock, MapPin, User, Check, X, RotateCcw, MessageCircle, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import {
@@ -41,7 +41,7 @@ export const LessonCard: React.FC<LessonCardProps> = ({
   onReschedule,
   compact = false,
 }) => {
-  const student = propStudent || getStudentById(lesson.aluno_id);
+  const student = propStudent;
   const config = statusConfig[lesson.status] || { variant: 'default' as const, label: lesson.status };
 
   // Fix: Compare only date parts using local time via date-fns

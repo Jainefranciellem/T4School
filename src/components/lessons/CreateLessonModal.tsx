@@ -19,7 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { instructors, locations, Lesson } from '@/data/mockData';
+import { instructors, locations } from '@/lib/constants';
+import { Lesson } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Calendar, Clock, MapPin, User, MessageCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -116,11 +117,8 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      // Generate ID if it's a new lesson
-      const lessonId = editLesson ? editLesson.id : crypto.randomUUID();
-
       await onSave({
-        id: lessonId,
+        id: editLesson ? editLesson.id : '',
         aluno_id: formData.aluno_id,
         data: formData.data,
         hora: formData.hora,
@@ -131,10 +129,7 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
         // If we are sending a new notification, reset the sent status to false to trigger the workflow
         notificacao_enviada: formData.notificar ? false : (editLesson ? editLesson.notificacao_enviada : false),
         enviar_notificacao: formData.notificar,
-        // Calculate remaining lessons: current - 1 (for the lesson being booked)
-        aulas_restantes: (!editLesson && formData.aluno_id)
-          ? (activeStudents.find(s => s.id === formData.aluno_id)?.aulas_restantes || 0) - 1
-          : undefined
+        // aulas_restantes is decremented server-side when the lesson is created
       });
 
       // Toast handling is usually done in the parent mutation callbacks, 

@@ -25,7 +25,7 @@ export async function pedirPermissaoNotificacaoProfessor() {
     if (permission !== 'granted') return null;
 
     const token = await getToken(messaging, {
-        vapidKey: 'BAvoe-HLGWAmfSjMs9OySJuA_PUcQXlEoh--ynJJpZaWUOWavD5YF2M0yuRcHNcoXWI1Od4EjfFOOVbKnVyU1nc'
+        vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
     });
 
     return token; // 🔥 token REAL do Firebase

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { LessonCard } from '@/components/lessons/LessonCard';
 import { CreateLessonModal } from '@/components/lessons/CreateLessonModal';
-import { Lesson } from '@/data/mockData';
+import { Lesson } from '@/types';
 import {
   Calendar,
   Users,
@@ -17,7 +17,8 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AulasService, Aula } from '@/lib/aulas.service';
+import { AulasService } from '@/lib/aulas.service';
+import { Aula } from '@/types';
 import { listarAlunos } from '@/lib/students.service';
 import { useToast } from '@/hooks/use-toast';
 import { format, addDays } from 'date-fns';

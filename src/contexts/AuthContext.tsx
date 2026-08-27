@@ -1,10 +1,23 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { apiFetch } from '@/lib/api';
+import { getAccessToken, setTokens, clearTokens } from '@/lib/auth-storage';
 
 interface User {
   id: string;
   email: string;
   nome: string;
   role: 'admin' | 'student';
+}
+
+interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
+  user: {
+    id: string;
+    email: string;
+    nome: string;
+    role: 'ADMIN' | 'INSTRUTOR';
+  };
 }
 
 interface AuthContextType {
@@ -36,43 +49,53 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     // Check for existing session
     const storedUser = localStorage.getItem('T4School_user');
-    if (storedUser) {
+    if (storedUser && getAccessToken()) {
       try {
         setUser(JSON.parse(storedUser));
       } catch {
         localStorage.removeItem('T4School_user');
       }
+    } else {
+      localStorage.removeItem('T4School_user');
+      clearTokens();
     }
     setIsLoading(false);
   }, []);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 800));
 
-    // Mock authentication - in production, this would call your API
-    if (email === 'admin@T4School.com' && password === '123456') {
-      const mockUser: User = {
-        id: '1',
-        email: 'admin@T4School.com',
-        nome: 'Professor Carlos',
-        role: 'admin',
+    try {
+      const response = await apiFetch<LoginResponse>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+
+      const loggedInUser: User = {
+        id: response.user.id,
+        email: response.user.email,
+        nome: response.user.nome,
+        role: response.user.role === 'ADMIN' ? 'admin' : 'student',
       };
-      setUser(mockUser);
-      localStorage.setItem('T4School_user', JSON.stringify(mockUser));
-      setIsLoading(false);
-      return { success: true };
-    }
 
-    setIsLoading(false);
-    return { success: false, error: 'Email ou senha incorretos' };
+      setTokens(response.accessToken, response.refreshToken);
+      setUser(loggedInUser);
+      localStorage.setItem('T4School_user', JSON.stringify(loggedInUser));
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Email ou senha incorretos',
+      };
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const logout = () => {
     setUser(null);
     localStorage.removeItem('T4School_user');
+    clearTokens();
   };
 
   return (

@@ -28,7 +28,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { listarAlunos, criarAluno, atualizarAluno, excluirAluno, type Student } from '@/lib/students.service';
+import { listarAlunos, criarAluno, atualizarAluno, excluirAluno } from '@/lib/students.service';
+import { Student } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import {
   Search,

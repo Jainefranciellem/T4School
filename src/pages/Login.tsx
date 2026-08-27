@@ -80,23 +80,20 @@ const Login: React.FC = () => {
     setIsSubmitting(false);
 
     if (result.success) {
-      const token = await pedirPermissaoNotificacaoProfessor();
-
-      salvarToken({
-        professor_id: professorId,
-        token_push: token,
-        tipo: 'professor'
-      });
-
-
       toast({
         title: 'Bem-vindo! 🏄',
         description: 'Login realizado com sucesso.',
       });
 
-      if (token) {
-        await salvarDispositivoProfessor(token);
+      try {
+        const token = await pedirPermissaoNotificacaoProfessor();
+        if (token) {
+          await salvarDispositivoProfessor(token);
+        }
+      } catch (error) {
+        console.error('Erro ao registrar notificações push:', error);
       }
+
       navigate('/dashboard');
     } else {
       toast({
@@ -192,11 +189,6 @@ const Login: React.FC = () => {
               </Button>
             </form>
 
-            <div className="mt-6 pt-6 border-t border-border">
-              <p className="text-sm text-center text-muted-foreground">
-                <strong>Demo:</strong> admin@T4School.com / 123456
-              </p>
-            </div>
           </CardContent>
         </Card>
 
@@ -212,7 +204,3 @@ const Login: React.FC = () => {
 };
 
 export default Login;
-function salvarToken(arg0: { professor_id: any; token_push: string; tipo: string; }) {
-  throw new Error('Function not implemented.');
-}
-
