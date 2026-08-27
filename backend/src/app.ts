@@ -10,6 +10,7 @@ import { lessonsRoutes } from './routes/lessons.routes.js';
 import { plansRoutes } from './routes/plans.routes.js';
 import { settingsRoutes } from './routes/settings.routes.js';
 import { deviceTokensRoutes } from './routes/device-tokens.routes.js';
+import { jobsRoutes } from './routes/jobs.routes.js';
 
 export async function buildApp() {
   const app = Fastify({ logger: true });
@@ -44,6 +45,7 @@ export async function buildApp() {
   await app.register(plansRoutes);
   await app.register(settingsRoutes);
   await app.register(deviceTokensRoutes);
+  await app.register(jobsRoutes);
 
   return app;
 }

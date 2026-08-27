@@ -70,6 +70,8 @@ model Lesson {
   observacoes         String?
   notificacao_enviada Boolean      @default(false)
   enviar_notificacao  Boolean      @default(true)
+  lembrete_enviado         Boolean @default(false)
+  lembrete_dobrado_enviado Boolean @default(false)
   created_at          DateTime     @default(now())
   updated_at          DateTime     @updatedAt
 

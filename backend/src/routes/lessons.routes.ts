@@ -1,6 +1,34 @@
 import type { FastifyInstance } from 'fastify';
+import type { Lesson } from '@prisma/client';
 import { createLessonSchema, updateLessonSchema } from '../schemas/lesson.schema.js';
 import { requireAuth } from '../middleware/auth.js';
+import { sendWhatsAppMessage } from '../lib/whatsapp.js';
+import { renderTemplate } from '../lib/message-template.js';
+
+async function notifyStatusChange(app: FastifyInstance, lesson: Lesson) {
+  if (lesson.status !== 'Confirmada' && lesson.status !== 'Cancelada') return;
+
+  const settings = await app.prisma.settings.findUnique({ where: { id: 'singleton' } });
+  if (!settings?.whatsapp_phone_id || !settings.whatsapp_token) return;
+
+  const student = await app.prisma.student.findUnique({ where: { id: lesson.aluno_id } });
+  if (!student) return;
+
+  const template = lesson.status === 'Confirmada' ? settings.template_confirmed : settings.template_cancelled;
+
+  await sendWhatsAppMessage({
+    phoneNumberId: settings.whatsapp_phone_id,
+    accessToken: settings.whatsapp_token,
+    to: student.telefone,
+    message: renderTemplate(template, {
+      nome: student.nome,
+      hora: lesson.hora,
+      local: lesson.local,
+      instrutor: lesson.instrutor,
+      data: lesson.data,
+    }),
+  });
+}
 
 export async function lessonsRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireAuth);
@@ -56,6 +84,13 @@ export async function lessonsRoutes(app: FastifyInstance) {
     if (!exists) return reply.code(404).send({ message: 'Aula não encontrada' });
 
     const lesson = await app.prisma.lesson.update({ where: { id }, data });
+
+    if (data.status && data.status !== exists.status) {
+      await notifyStatusChange(app, lesson).catch((error) => {
+        app.log.error({ err: error, lessonId: lesson.id }, 'Falha ao enviar notificação de status');
+      });
+    }
+
     return lesson;
   });
 

@@ -7,6 +7,8 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().min(1),
   JWT_SECRET: z.string().min(1),
   JWT_REFRESH_SECRET: z.string().min(1),
+  INTERNAL_JOB_SECRET: z.string().min(1),
+  REMINDER_JOB_CRON: z.string().default('*/15 * * * *'),
 });
 
 export const env = envSchema.parse(process.env);
