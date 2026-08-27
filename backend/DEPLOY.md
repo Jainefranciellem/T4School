@@ -31,12 +31,18 @@ Não há processo contínuo — o job de lembretes usa **Vercel Cron** em vez do
    - `JWT_SECRET`, `JWT_REFRESH_SECRET`, `INTERNAL_JOB_SECRET` — gere com `openssl rand -base64 32`
    - `CRON_SECRET` — outra string aleatória; a Vercel usa esse valor automaticamente pra
      autenticar as chamadas do Cron
+   - `FIREBASE_SERVICE_ACCOUNT` (opcional) — JSON completo da chave de serviço do Firebase, pra
+     ativar o push pro professor no lembrete de 15 min. Sem essa var, o push é só pulado.
    - `PORT` pode ficar com o default (não é usado em serverless, mas o schema de env exige um valor)
 4. **Deploy**. O `buildCommand` do `backend/vercel.json` já roda `prisma generate` e
    `prisma migrate deploy` a cada build.
 5. **Seed do admin** (uma vez): `vercel env pull` localmente pra pegar o `DATABASE_URL` de
    produção, depois `SEED_ADMIN_EMAIL=... SEED_ADMIN_PASSWORD=... SEED_ADMIN_NAME=... npm run seed`
    (rodando local, mas apontando pro banco de produção).
+6. **Cron externo pro lembrete de 15 min**: o Cron da Vercel no plano Hobby só roda 1x/dia, o que
+   não é frequente o suficiente. Configure os secrets `REMINDERS_API_URL` e
+   `REMINDERS_INTERNAL_SECRET` no GitHub (Settings > Secrets and variables > Actions) — o workflow
+   `.github/workflows/reminders.yml` já commitado chama o job a cada 5 minutos.
 
 ## Opção B — Render (usa `render.yaml` na raiz do repo)
 
