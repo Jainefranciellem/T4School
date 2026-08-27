@@ -12,7 +12,7 @@ const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
 const external = Object.keys(pkg.dependencies || {});
 
 await build({
-  entryPoints: ['api/_handler.ts'],
+  entryPoints: ['src/vercel-handler.ts'],
   outfile: 'api/index.js',
   bundle: true,
   platform: 'node',

@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { buildApp } from '../src/app.js';
+import { buildApp } from './app.js';
 
 type VercelRequest = IncomingMessage & { body?: unknown };
 
