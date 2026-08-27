@@ -6,7 +6,7 @@ export const updateSettingsSchema = z.object({
   send_reminders: z.boolean().optional(),
   reminder_hours: z.number().int().min(1).max(72).optional(),
   double_reminder: z.boolean().optional(),
-  double_reminder_hours: z.number().int().min(1).max(24).optional(),
+  double_reminder_minutes: z.number().int().min(1).max(180).optional(),
   template_reminder: z.string().min(1).optional(),
   template_confirmed: z.string().min(1).optional(),
   template_cancelled: z.string().min(1).optional(),

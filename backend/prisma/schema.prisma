@@ -94,10 +94,10 @@ model Settings {
   id                    String  @id @default("singleton")
   whatsapp_phone_id     String?
   whatsapp_token        String?
-  send_reminders        Boolean @default(true)
-  reminder_hours        Int     @default(24)
-  double_reminder       Boolean @default(true)
-  double_reminder_hours Int     @default(1)
+  send_reminders          Boolean @default(true)
+  reminder_hours          Int     @default(24)
+  double_reminder         Boolean @default(true)
+  double_reminder_minutes Int     @default(15)
   template_reminder     String  @default("Olá {{nome}}! Lembrete: sua aula de surf é hoje às {{hora}} no {{local}} com {{instrutor}}.")
   template_confirmed    String  @default("Presença confirmada! Te esperamos na aula de hoje.")
   template_cancelled    String  @default("Tudo bem — registramos sua ausência. Entre em contato para remarcar.")

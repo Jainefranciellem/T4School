@@ -10,6 +10,7 @@ const envSchema = z.object({
   INTERNAL_JOB_SECRET: z.string().min(1),
   REMINDER_JOB_CRON: z.string().default('*/15 * * * *'),
   CRON_SECRET: z.string().optional(),
+  FIREBASE_SERVICE_ACCOUNT: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

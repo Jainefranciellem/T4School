@@ -2,12 +2,13 @@ import { LessonStatus, type PrismaClient } from '@prisma/client';
 import type { FastifyBaseLogger } from 'fastify';
 import { sendWhatsAppMessage } from '../lib/whatsapp.js';
 import { renderTemplate } from '../lib/message-template.js';
+import { notifyProfessors } from '../lib/notify-professors.js';
 
 const ACTIVE_STATUSES: LessonStatus[] = [LessonStatus.Agendada, LessonStatus.Confirmada];
 
-function hoursUntil(data: string, hora: string, now: Date): number {
+function minutesUntil(data: string, hora: string, now: Date): number {
   const lessonDateTime = new Date(`${data}T${hora}:00`);
-  return (lessonDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+  return (lessonDateTime.getTime() - now.getTime()) / (1000 * 60);
 }
 
 export interface ReminderJobResult {
@@ -26,9 +27,7 @@ export async function runReminderJob(
     return { sent: 0, failed: 0, skippedReason: 'Lembretes desativados nas configurações' };
   }
 
-  if (!settings.whatsapp_phone_id || !settings.whatsapp_token) {
-    return { sent: 0, failed: 0, skippedReason: 'WhatsApp não configurado' };
-  }
+  const whatsappConfigured = Boolean(settings.whatsapp_phone_id && settings.whatsapp_token);
 
   const now = new Date();
   const candidates = await prisma.lesson.findMany({
@@ -44,8 +43,9 @@ export async function runReminderJob(
   let failed = 0;
 
   for (const lesson of candidates) {
-    const remainingHours = hoursUntil(lesson.data, lesson.hora, now);
-    if (remainingHours < 0) continue;
+    const remainingMinutes = minutesUntil(lesson.data, lesson.hora, now);
+    if (remainingMinutes < 0) continue;
+    const remainingHours = remainingMinutes / 60;
 
     const vars = {
       nome: lesson.student.nome,
@@ -55,34 +55,65 @@ export async function runReminderJob(
       data: lesson.data,
     };
 
-    const isFirstReminderDue = !lesson.lembrete_enviado && remainingHours <= settings.reminder_hours;
-    const isDoubleReminderDue =
+    // Tier 1 (X hours before) and tier 2 (double_reminder_minutes before) fire
+    // independently of each other: tier 2 does NOT require tier 1 to have
+    // happened, so the professor's push and the student's close-to-lesson
+    // WhatsApp still work even if WhatsApp was never configured (or the
+    // lesson was booked less than reminder_hours before it starts).
+    const isFirstTierDue =
+      whatsappConfigured && !lesson.lembrete_enviado && remainingHours <= settings.reminder_hours;
+
+    const isSecondTierDue =
       settings.double_reminder &&
-      lesson.lembrete_enviado &&
       !lesson.lembrete_dobrado_enviado &&
-      remainingHours <= settings.double_reminder_hours;
+      remainingMinutes <= settings.double_reminder_minutes;
 
-    if (!isFirstReminderDue && !isDoubleReminderDue) continue;
+    if (isFirstTierDue) {
+      try {
+        await sendWhatsAppMessage({
+          phoneNumberId: settings.whatsapp_phone_id!,
+          accessToken: settings.whatsapp_token!,
+          to: lesson.student.telefone,
+          message: renderTemplate(settings.template_reminder, vars),
+        });
+        await prisma.lesson.update({ where: { id: lesson.id }, data: { lembrete_enviado: true } });
+        sent++;
+      } catch (error) {
+        failed++;
+        logger.error({ err: error, lessonId: lesson.id }, 'Falha ao enviar lembrete de WhatsApp');
+      }
+      continue;
+    }
 
-    try {
-      await sendWhatsAppMessage({
-        phoneNumberId: settings.whatsapp_phone_id,
-        accessToken: settings.whatsapp_token,
-        to: lesson.student.telefone,
-        message: renderTemplate(settings.template_reminder, vars),
-      });
+    if (isSecondTierDue) {
+      if (whatsappConfigured) {
+        try {
+          await sendWhatsAppMessage({
+            phoneNumberId: settings.whatsapp_phone_id!,
+            accessToken: settings.whatsapp_token!,
+            to: lesson.student.telefone,
+            message: renderTemplate(settings.template_reminder, vars),
+          });
+          sent++;
+        } catch (error) {
+          failed++;
+          logger.error({ err: error, lessonId: lesson.id }, 'Falha ao enviar lembrete duplo de WhatsApp');
+        }
+      }
+
+      try {
+        await notifyProfessors(prisma, {
+          title: 'Aula chegando',
+          body: `Aula com ${lesson.student.nome} às ${lesson.hora} em ${settings.double_reminder_minutes} minutos.`,
+        });
+      } catch (error) {
+        logger.error({ err: error, lessonId: lesson.id }, 'Falha ao notificar professor por push');
+      }
 
       await prisma.lesson.update({
         where: { id: lesson.id },
-        data: isFirstReminderDue
-          ? { lembrete_enviado: true }
-          : { lembrete_dobrado_enviado: true },
+        data: { lembrete_dobrado_enviado: true },
       });
-
-      sent++;
-    } catch (error) {
-      failed++;
-      logger.error({ err: error, lessonId: lesson.id }, 'Falha ao enviar lembrete de WhatsApp');
     }
   }
 

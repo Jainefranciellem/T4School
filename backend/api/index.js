@@ -15,7 +15,8 @@ var envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(1),
   INTERNAL_JOB_SECRET: z.string().min(1),
   REMINDER_JOB_CRON: z.string().default("*/15 * * * *"),
-  CRON_SECRET: z.string().optional()
+  CRON_SECRET: z.string().optional(),
+  FIREBASE_SERVICE_ACCOUNT: z.string().optional()
 });
 var env = envSchema.parse(process.env);
 
@@ -341,7 +342,7 @@ var updateSettingsSchema = z6.object({
   send_reminders: z6.boolean().optional(),
   reminder_hours: z6.number().int().min(1).max(72).optional(),
   double_reminder: z6.boolean().optional(),
-  double_reminder_hours: z6.number().int().min(1).max(24).optional(),
+  double_reminder_minutes: z6.number().int().min(1).max(180).optional(),
   template_reminder: z6.string().min(1).optional(),
   template_confirmed: z6.string().min(1).optional(),
   template_cancelled: z6.string().min(1).optional()
@@ -390,19 +391,68 @@ async function deviceTokensRoutes(app) {
 
 // src/jobs/reminders.job.ts
 import { LessonStatus } from "@prisma/client";
+
+// src/lib/firebase-admin.ts
+import { initializeApp, cert, getApps } from "firebase-admin/app";
+import { getMessaging } from "firebase-admin/messaging";
+function getFirebaseApp() {
+  if (getApps().length > 0) return getApps()[0];
+  if (!env.FIREBASE_SERVICE_ACCOUNT) return null;
+  const serviceAccount = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT);
+  return initializeApp({ credential: cert(serviceAccount) });
+}
+async function sendPushNotification(tokens, notification) {
+  const app = getFirebaseApp();
+  if (!app || tokens.length === 0) {
+    return { sent: 0, failed: 0, invalidTokens: [] };
+  }
+  const messaging = getMessaging(app);
+  let sent = 0;
+  let failed = 0;
+  const invalidTokens = [];
+  for (const token of tokens) {
+    try {
+      await messaging.send({ token, notification });
+      sent++;
+    } catch (error) {
+      failed++;
+      const code = error?.errorInfo?.code;
+      if (code === "messaging/registration-token-not-registered" || code === "messaging/invalid-registration-token") {
+        invalidTokens.push(token);
+      }
+    }
+  }
+  return { sent, failed, invalidTokens };
+}
+
+// src/lib/notify-professors.ts
+async function notifyProfessors(prisma, notification) {
+  const deviceTokens = await prisma.deviceToken.findMany();
+  if (deviceTokens.length === 0) {
+    return { sent: 0, failed: 0, invalidTokens: [] };
+  }
+  const result = await sendPushNotification(
+    deviceTokens.map((d) => d.token),
+    notification
+  );
+  if (result.invalidTokens.length > 0) {
+    await prisma.deviceToken.deleteMany({ where: { token: { in: result.invalidTokens } } });
+  }
+  return result;
+}
+
+// src/jobs/reminders.job.ts
 var ACTIVE_STATUSES = [LessonStatus.Agendada, LessonStatus.Confirmada];
-function hoursUntil(data, hora, now) {
+function minutesUntil(data, hora, now) {
   const lessonDateTime = /* @__PURE__ */ new Date(`${data}T${hora}:00`);
-  return (lessonDateTime.getTime() - now.getTime()) / (1e3 * 60 * 60);
+  return (lessonDateTime.getTime() - now.getTime()) / (1e3 * 60);
 }
 async function runReminderJob(prisma, logger) {
   const settings = await prisma.settings.findUnique({ where: { id: "singleton" } });
   if (!settings || !settings.send_reminders) {
     return { sent: 0, failed: 0, skippedReason: "Lembretes desativados nas configura\xE7\xF5es" };
   }
-  if (!settings.whatsapp_phone_id || !settings.whatsapp_token) {
-    return { sent: 0, failed: 0, skippedReason: "WhatsApp n\xE3o configurado" };
-  }
+  const whatsappConfigured = Boolean(settings.whatsapp_phone_id && settings.whatsapp_token);
   const now = /* @__PURE__ */ new Date();
   const candidates = await prisma.lesson.findMany({
     where: {
@@ -415,8 +465,9 @@ async function runReminderJob(prisma, logger) {
   let sent = 0;
   let failed = 0;
   for (const lesson of candidates) {
-    const remainingHours = hoursUntil(lesson.data, lesson.hora, now);
-    if (remainingHours < 0) continue;
+    const remainingMinutes = minutesUntil(lesson.data, lesson.hora, now);
+    if (remainingMinutes < 0) continue;
+    const remainingHours = remainingMinutes / 60;
     const vars = {
       nome: lesson.student.nome,
       hora: lesson.hora,
@@ -424,24 +475,51 @@ async function runReminderJob(prisma, logger) {
       instrutor: lesson.instrutor,
       data: lesson.data
     };
-    const isFirstReminderDue = !lesson.lembrete_enviado && remainingHours <= settings.reminder_hours;
-    const isDoubleReminderDue = settings.double_reminder && lesson.lembrete_enviado && !lesson.lembrete_dobrado_enviado && remainingHours <= settings.double_reminder_hours;
-    if (!isFirstReminderDue && !isDoubleReminderDue) continue;
-    try {
-      await sendWhatsAppMessage({
-        phoneNumberId: settings.whatsapp_phone_id,
-        accessToken: settings.whatsapp_token,
-        to: lesson.student.telefone,
-        message: renderTemplate(settings.template_reminder, vars)
-      });
+    const isFirstTierDue = whatsappConfigured && !lesson.lembrete_enviado && remainingHours <= settings.reminder_hours;
+    const isSecondTierDue = settings.double_reminder && !lesson.lembrete_dobrado_enviado && remainingMinutes <= settings.double_reminder_minutes;
+    if (isFirstTierDue) {
+      try {
+        await sendWhatsAppMessage({
+          phoneNumberId: settings.whatsapp_phone_id,
+          accessToken: settings.whatsapp_token,
+          to: lesson.student.telefone,
+          message: renderTemplate(settings.template_reminder, vars)
+        });
+        await prisma.lesson.update({ where: { id: lesson.id }, data: { lembrete_enviado: true } });
+        sent++;
+      } catch (error) {
+        failed++;
+        logger.error({ err: error, lessonId: lesson.id }, "Falha ao enviar lembrete de WhatsApp");
+      }
+      continue;
+    }
+    if (isSecondTierDue) {
+      if (whatsappConfigured) {
+        try {
+          await sendWhatsAppMessage({
+            phoneNumberId: settings.whatsapp_phone_id,
+            accessToken: settings.whatsapp_token,
+            to: lesson.student.telefone,
+            message: renderTemplate(settings.template_reminder, vars)
+          });
+          sent++;
+        } catch (error) {
+          failed++;
+          logger.error({ err: error, lessonId: lesson.id }, "Falha ao enviar lembrete duplo de WhatsApp");
+        }
+      }
+      try {
+        await notifyProfessors(prisma, {
+          title: "Aula chegando",
+          body: `Aula com ${lesson.student.nome} \xE0s ${lesson.hora} em ${settings.double_reminder_minutes} minutos.`
+        });
+      } catch (error) {
+        logger.error({ err: error, lessonId: lesson.id }, "Falha ao notificar professor por push");
+      }
       await prisma.lesson.update({
         where: { id: lesson.id },
-        data: isFirstReminderDue ? { lembrete_enviado: true } : { lembrete_dobrado_enviado: true }
+        data: { lembrete_dobrado_enviado: true }
       });
-      sent++;
-    } catch (error) {
-      failed++;
-      logger.error({ err: error, lessonId: lesson.id }, "Falha ao enviar lembrete de WhatsApp");
     }
   }
   return { sent, failed };

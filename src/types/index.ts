@@ -41,7 +41,7 @@ export interface AppSettings {
   send_reminders: boolean;
   reminder_hours: number;
   double_reminder: boolean;
-  double_reminder_hours: number;
+  double_reminder_minutes: number;
   template_reminder: string;
   template_confirmed: string;
   template_cancelled: string;

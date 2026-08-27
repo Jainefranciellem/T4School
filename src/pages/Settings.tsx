@@ -195,20 +195,23 @@ const Settings: React.FC = () => {
 
               {form.double_reminder && (
                 <div className="space-y-2">
-                  <Label htmlFor="hours2">Horas antes (segundo lembrete)</Label>
+                  <Label htmlFor="minutes2">Minutos antes (segundo lembrete)</Label>
                   <Input
-                    id="hours2"
+                    id="minutes2"
                     type="number"
                     min="1"
-                    max="24"
-                    value={form.double_reminder_hours}
+                    max="180"
+                    value={form.double_reminder_minutes}
                     onChange={(e) =>
                       setForm((prev) =>
-                        prev && { ...prev, double_reminder_hours: parseInt(e.target.value) || 1 }
+                        prev && { ...prev, double_reminder_minutes: parseInt(e.target.value) || 15 }
                       )
                     }
                     className="w-32"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Nesse momento o aluno recebe outro WhatsApp e o professor recebe uma notificação push.
+                  </p>
                 </div>
               )}
             </>

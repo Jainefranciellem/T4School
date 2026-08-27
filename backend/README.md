@@ -42,15 +42,45 @@ Configure `whatsapp_phone_id` e `whatsapp_token` (WhatsApp Business Cloud API) v
   - **Vercel** (serverless, sem processo contínuo): **Vercel Cron**, configurado em
     `backend/vercel.json` (`crons`), chamando `GET /internal/jobs/reminders`.
 - O job varre aulas `Agendada`/`Confirmada` com `enviar_notificacao=true` e dispara
-  `template_reminder` quando faltam `reminder_hours` horas para a aula, e de novo quando faltam
-  `double_reminder_hours` horas, se `double_reminder` estiver ativo. Cada envio marca
-  `lembrete_enviado`/`lembrete_dobrado_enviado` na aula para não duplicar.
+  `template_reminder` quando faltam `reminder_hours` horas para a aula (1º lembrete). Cada envio
+  marca `lembrete_enviado`/`lembrete_dobrado_enviado` na aula para não duplicar.
+- O **2º lembrete** (`double_reminder`, `double_reminder_minutes` antes da aula — padrão 15 min)
+  dispara **dois canais ao mesmo tempo**: WhatsApp pro aluno (se configurado) e **push pro
+  professor** (todos os `DeviceToken` cadastrados). Esse 2º lembrete é independente do 1º — funciona
+  mesmo se o WhatsApp nunca foi configurado, ou se a aula foi criada a menos de `reminder_hours`
+  de antecedência.
 - Confirmar (`status: "Confirmada"`) ou cancelar (`status: "Cancelada"`) uma aula via
   `PUT /lessons/:id` dispara `template_confirmed`/`template_cancelled` na hora, de forma síncrona
   — isso funciona igual em qualquer ambiente, não depende do cron.
 - Mensagens usam a API de texto livre do Graph API (`type: "text"`) — fora da janela de 24h de
   atendimento do WhatsApp, a Meta exige um *message template* pré-aprovado; para produção em escala
   vale migrar `sendWhatsAppMessage` (`src/lib/whatsapp.ts`) para enviar `type: "template"`.
+
+## Push para o professor
+
+Configure `FIREBASE_SERVICE_ACCOUNT` no `.env` com o JSON completo da chave de serviço (Firebase
+Console > Configurações do projeto > Contas de serviço > Gerar nova chave privada, tudo em uma
+linha só). Sem essa variável, o envio de push é pulado silenciosamente (não quebra o job).
+
+- `src/lib/firebase-admin.ts` faz o envio via Firebase Admin SDK; `src/lib/notify-professors.ts`
+  busca todos os `DeviceToken` cadastrados e envia pra cada um, removendo do banco os tokens que a
+  FCM reportar como inválidos/não registrados.
+- O único gatilho hoje é o 2º lembrete do job (veja acima). Pra usar em outro evento, chame
+  `notifyProfessors(prisma, { title, body })`.
+
+### ⚠️ Cron do plano Hobby da Vercel não é frequente o suficiente
+
+O `crons` do `vercel.json` roda só **1x/dia** no plano gratuito — incompatível com um aviso "15
+minutos antes", que precisa rodar a cada poucos minutos. Pra isso funcionar de verdade em produção
+na Vercel, use um cron **externo e gratuito** batendo em `GET /internal/jobs/reminders` a cada 5
+minutos, com o header `X-Internal-Secret: <INTERNAL_JOB_SECRET>`:
+
+- **GitHub Actions** (grátis, já está no seu repo): um workflow `.github/workflows/reminders.yml`
+  com `schedule: cron: "*/5 * * * *"` chamando a URL via `curl`.
+- Ou um serviço tipo **cron-job.org** (grátis, sem precisar de repositório).
+
+Sem isso, o job só roda 1x/dia via Vercel Cron e o lembrete de 15 minutos praticamente nunca
+vai coincidir com o horário certo.
 
 ## Deploy
 
