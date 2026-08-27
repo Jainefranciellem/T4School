@@ -13,12 +13,12 @@ Não há processo contínuo — o job de lembretes usa **Vercel Cron** em vez do
 
 1. **Criar o projeto**: dashboard da Vercel → **Add New > Project** → selecione o repo
    `T4School` → em *Root Directory* escolha `backend` → framework preset: **Other**.
-2. **Banco de dados**: aba **Storage** do projeto → **Create Database > Postgres** (é Neon por
-   baixo, sem prazo de expiração no free tier). A Vercel injeta `DATABASE_URL`/`POSTGRES_URL`
-   automaticamente nas env vars do projeto.
-   - Copie a *pooled connection string* pra `DATABASE_URL` e a *unpooled/direct connection
-     string* pra `DIRECT_URL` (o Storage tab da Vercel mostra as duas). O Prisma usa
-     `DIRECT_URL` só pra rodar as migrations.
+2. **Banco de dados (Supabase)**: crie um projeto grátis em supabase.com (defina uma senha do
+   banco e guarde) → **Project Settings > Database > Connection string**. Supabase mostra duas:
+   - **Connection pooling** (porta `6543`, modo *Transaction*) → use como `DATABASE_URL`
+   - **Direct connection** (porta `5432`) → use como `DIRECT_URL` (só pra rodar as migrations)
+   O Postgres free do Supabase não tem prazo de expiração — só "pausa" depois de ~1 semana sem
+   uso, e volta sozinho no próximo acesso.
 3. **Env vars** (Project Settings > Environment Variables), pelo menos:
    - `DATABASE_URL`, `DIRECT_URL` (do passo 2)
    - `CORS_ORIGIN` = URL de produção do frontend (ex.: `https://t4school.vercel.app`)
