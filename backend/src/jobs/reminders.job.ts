@@ -65,6 +65,7 @@ export async function runReminderJob(
 
     if (isFirstTierDue) {
       const result = await notifyStudent(
+        prisma,
         settings,
         lesson.student,
         settings.template_reminder,
@@ -80,6 +81,7 @@ export async function runReminderJob(
 
     if (isSecondTierDue) {
       const result = await notifyStudent(
+        prisma,
         settings,
         lesson.student,
         settings.template_reminder,

@@ -60,7 +60,9 @@ model Student {
   aulas_restantes Int           @default(0)
   status          StudentStatus @default(Ativo)
   avatar          String?
+  access_token    String        @unique @default(dbgenerated("gen_random_uuid()::text"))
   lessons         Lesson[]
+  device_tokens   StudentDeviceToken[]
   created_at      DateTime      @default(now())
   updated_at      DateTime      @updatedAt
 }
@@ -91,6 +93,15 @@ model DeviceToken {
   id         String   @id @default(uuid())
   user_id    String
   user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  token      String   @unique
+  platform   String
+  created_at DateTime @default(now())
+}
+
+model StudentDeviceToken {
+  id         String   @id @default(uuid())
+  student_id String
+  student    Student  @relation(fields: [student_id], references: [id], onDelete: Cascade)
   token      String   @unique
   platform   String
   created_at DateTime @default(now())

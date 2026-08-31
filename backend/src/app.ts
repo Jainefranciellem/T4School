@@ -11,6 +11,7 @@ import { plansRoutes } from './routes/plans.routes.js';
 import { settingsRoutes } from './routes/settings.routes.js';
 import { deviceTokensRoutes } from './routes/device-tokens.routes.js';
 import { jobsRoutes } from './routes/jobs.routes.js';
+import { portalRoutes } from './routes/portal.routes.js';
 
 export async function buildApp() {
   const app = Fastify({ logger: true });
@@ -46,6 +47,7 @@ export async function buildApp() {
   await app.register(settingsRoutes);
   await app.register(deviceTokensRoutes);
   await app.register(jobsRoutes);
+  await app.register(portalRoutes);
 
   return app;
 }
