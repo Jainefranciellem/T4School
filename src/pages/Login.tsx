@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { salvarDispositivoProfessor } from '@/lib/professor.service';
 import logo from '@/assets/logo.png';
-import { pedirPermissaoNotificacaoProfessor } from '@/lib/firebase';
+import { pedirPermissaoNotificacaoPush } from '@/lib/firebase';
 
 const WaveBackground = () => (
   <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -86,7 +86,7 @@ const Login: React.FC = () => {
       });
 
       try {
-        const token = await pedirPermissaoNotificacaoProfessor();
+        const token = await pedirPermissaoNotificacaoPush();
         if (token) {
           await salvarDispositivoProfessor(token);
           console.log('[push] device token salvo no backend');

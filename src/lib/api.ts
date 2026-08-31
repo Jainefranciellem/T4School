@@ -30,7 +30,10 @@ export async function apiFetch<T>(
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      // Fastify rejects a Content-Type: application/json header on a request
+      // with no body (FST_ERR_CTP_EMPTY_JSON_BODY), so only set it when
+      // there's actually a body to send.
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
       ...(token && !isAuthEndpoint ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },

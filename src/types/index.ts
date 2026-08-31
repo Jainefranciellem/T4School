@@ -7,6 +7,7 @@ export interface Student {
   aulas_restantes?: number;
   status: 'Ativo' | 'Inativo';
   avatar?: string;
+  access_token?: string;
 }
 
 export interface Lesson {
