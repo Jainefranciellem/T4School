@@ -22,11 +22,17 @@ const analytics = getAnalytics(app);
 
 export async function pedirPermissaoNotificacaoProfessor() {
     const permission = await Notification.requestPermission();
+    console.log('[push] permissão de notificação:', permission);
     if (permission !== 'granted') return null;
 
-    const token = await getToken(messaging, {
-        vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
-    });
-
-    return token; // 🔥 token REAL do Firebase
+    try {
+        const token = await getToken(messaging, {
+            vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+        });
+        console.log('[push] token FCM gerado:', token || '(vazio)');
+        return token; // 🔥 token REAL do Firebase
+    } catch (error) {
+        console.error('[push] erro ao gerar token FCM:', error);
+        throw error;
+    }
 }

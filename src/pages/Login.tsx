@@ -89,6 +89,9 @@ const Login: React.FC = () => {
         const token = await pedirPermissaoNotificacaoProfessor();
         if (token) {
           await salvarDispositivoProfessor(token);
+          console.log('[push] device token salvo no backend');
+        } else {
+          console.log('[push] sem token (permissão negada ou getToken retornou vazio)');
         }
       } catch (error) {
         console.error('Erro ao registrar notificações push:', error);
