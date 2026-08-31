@@ -26,8 +26,13 @@ export async function pedirPermissaoNotificacaoProfessor() {
     if (permission !== 'granted') return null;
 
     try {
+        // Sem isso, o SDK tenta registrar sozinho /firebase-messaging-sw.js
+        // (nome padrão dele), que não existe nesse projeto — usamos o /sw.js
+        // que o main.tsx já registra.
+        const registration = await navigator.serviceWorker.ready;
         const token = await getToken(messaging, {
             vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+            serviceWorkerRegistration: registration,
         });
         console.log('[push] token FCM gerado:', token || '(vazio)');
         return token; // 🔥 token REAL do Firebase

@@ -15,8 +15,10 @@ export async function pedirPermissaoNotificacao() {
     }
 
     try {
+        const registration = await navigator.serviceWorker.ready;
         const token = await getToken(messaging, {
             vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+            serviceWorkerRegistration: registration,
         });
 
         if (token) {
