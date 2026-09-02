@@ -1,9 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import {
   getPortalStudent,
@@ -11,10 +20,12 @@ import {
   confirmPortalLesson,
   cancelPortalLesson,
   registerPortalDeviceToken,
+  getPortalAvailableSlots,
+  createPortalLesson,
 } from '@/lib/portal.service';
 import { pedirPermissaoNotificacaoPush } from '@/lib/firebase';
-import { lessonTypeLabel } from '@/lib/constants';
-import { Loader2, Waves, MapPin, User, Bell, Check, X, Calendar } from 'lucide-react';
+import { lessonTypeLabel, lessonTypes, locations } from '@/lib/constants';
+import { Loader2, Waves, MapPin, User, Bell, Check, X, Calendar, CalendarPlus } from 'lucide-react';
 import { format } from 'date-fns';
 
 const statusConfig = {
@@ -29,6 +40,12 @@ const Portal: React.FC = () => {
   const { token } = useParams<{ token: string }>();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const [showBookingForm, setShowBookingForm] = useState(false);
+  const [bookingTipo, setBookingTipo] = useState<'Surf' | 'SurfSkate'>('Surf');
+  const [bookingData, setBookingData] = useState('');
+  const [bookingHora, setBookingHora] = useState('');
+  const [bookingLocal, setBookingLocal] = useState(locations[0]);
 
   const {
     data: student,
@@ -66,6 +83,34 @@ const Portal: React.FC = () => {
     },
     onError: (error: Error) => {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const { data: availableSlots, isLoading: isLoadingSlots } = useQuery({
+    queryKey: ['portal-available-slots', token, bookingTipo, bookingData],
+    queryFn: () => getPortalAvailableSlots(token!, bookingTipo, bookingData),
+    enabled: !!token && showBookingForm && !!bookingData,
+  });
+
+  const bookingMutation = useMutation({
+    mutationFn: () =>
+      createPortalLesson(token!, {
+        tipo: bookingTipo,
+        data: bookingData,
+        hora: bookingHora,
+        local: bookingLocal,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portal-lessons', token] });
+      queryClient.invalidateQueries({ queryKey: ['portal-student', token] });
+      queryClient.invalidateQueries({ queryKey: ['portal-available-slots', token] });
+      toast({ title: 'Aula agendada!' });
+      setShowBookingForm(false);
+      setBookingData('');
+      setBookingHora('');
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Erro ao agendar', description: error.message, variant: 'destructive' });
     },
   });
 
@@ -123,6 +168,144 @@ const Portal: React.FC = () => {
         <Bell className="h-4 w-4" />
         Ativar notificações
       </Button>
+
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          {!showBookingForm ? (
+            <Button
+              className="w-full"
+              disabled={student.aulas_restantes <= 0}
+              onClick={() => setShowBookingForm(true)}
+            >
+              <CalendarPlus className="h-4 w-4" />
+              Agendar aula
+            </Button>
+          ) : (
+            <>
+              <h2 className="text-lg font-semibold font-display flex items-center gap-2">
+                <CalendarPlus className="h-5 w-5 text-primary" />
+                Agendar aula
+              </h2>
+
+              <div className="space-y-2">
+                <Label htmlFor="booking-tipo" className="flex items-center gap-2">
+                  <Waves className="h-4 w-4" /> Tipo de atividade
+                </Label>
+                <Select
+                  value={bookingTipo}
+                  onValueChange={(value: 'Surf' | 'SurfSkate') => {
+                    setBookingTipo(value);
+                    setBookingHora('');
+                  }}
+                >
+                  <SelectTrigger id="booking-tipo">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {lessonTypes.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="booking-data" className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" /> Data
+                </Label>
+                <Input
+                  id="booking-data"
+                  type="date"
+                  min={format(new Date(), 'yyyy-MM-dd')}
+                  value={bookingData}
+                  onChange={(e) => {
+                    setBookingData(e.target.value);
+                    setBookingHora('');
+                  }}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="booking-hora">Horário</Label>
+                <Select
+                  value={bookingHora}
+                  onValueChange={setBookingHora}
+                  disabled={!bookingData || isLoadingSlots || (availableSlots?.horarios.length ?? 0) === 0}
+                >
+                  <SelectTrigger id="booking-hora">
+                    <SelectValue
+                      placeholder={
+                        !bookingData
+                          ? 'Selecione a data'
+                          : isLoadingSlots
+                          ? 'Carregando horários...'
+                          : (availableSlots?.horarios.length ?? 0) === 0
+                          ? 'Sem horários disponíveis nesse dia'
+                          : 'Selecione o horário'
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableSlots?.horarios.map((hora) => (
+                      <SelectItem key={hora} value={hora}>
+                        {hora}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="booking-local" className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4" /> Local
+                </Label>
+                <Select value={bookingLocal} onValueChange={setBookingLocal}>
+                  <SelectTrigger id="booking-local">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map((location) => (
+                      <SelectItem key={location} value={location}>
+                        {location}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowBookingForm(false)}
+                  disabled={bookingMutation.isPending}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  className="flex-1"
+                  disabled={!bookingData || !bookingHora || bookingMutation.isPending}
+                  onClick={() => bookingMutation.mutate()}
+                >
+                  {bookingMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Confirmar agendamento'
+                  )}
+                </Button>
+              </div>
+            </>
+          )}
+
+          {student.aulas_restantes <= 0 && !showBookingForm && (
+            <p className="text-xs text-muted-foreground text-center">
+              Você não tem aulas disponíveis no seu plano. Fale com seu professor.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="space-y-3">
         <h2 className="text-lg font-semibold font-display flex items-center gap-2">
