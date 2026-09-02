@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
@@ -46,6 +46,15 @@ const Portal: React.FC = () => {
   const [bookingData, setBookingData] = useState('');
   const [bookingHora, setBookingHora] = useState('');
   const [bookingLocal, setBookingLocal] = useState(locations[0]);
+
+  // O manifest.json tem start_url "/" (a tela de login do professor). No
+  // iOS, "Adicionar à Tela de Início" usa o start_url do manifest em vez
+  // da URL atual quando existe um <link rel="manifest">, então o ícone do
+  // aluno abriria sempre no login. Removendo o link aqui, o iOS cai no
+  // comportamento antigo e usa a URL da própria página do portal.
+  useEffect(() => {
+    document.querySelector('link[rel="manifest"]')?.remove();
+  }, []);
 
   const {
     data: student,
