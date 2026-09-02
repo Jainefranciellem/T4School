@@ -47,3 +47,23 @@ export function registerPortalDeviceToken(token: string, deviceToken: string): P
     body: JSON.stringify({ device_token: deviceToken, platform: 'web' }),
   });
 }
+
+export function getPortalAvailableSlots(
+  token: string,
+  tipo: string,
+  data: string
+): Promise<{ data: string; tipo: string; horarios: string[] }> {
+  return portalFetch(
+    `/portal/${token}/available-slots?${new URLSearchParams({ tipo, data }).toString()}`
+  );
+}
+
+export function createPortalLesson(
+  token: string,
+  payload: { tipo: string; data: string; hora: string; local: string }
+): Promise<Lesson> {
+  return portalFetch(`/portal/${token}/lessons`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
