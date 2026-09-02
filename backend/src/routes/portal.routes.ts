@@ -3,6 +3,7 @@ import type { LessonStatus } from '@prisma/client';
 import { z } from 'zod';
 import { notifyProfessors } from '../lib/notify-professors.js';
 import { getScheduledTimes, DEFAULT_INSTRUCTOR, DEFAULT_LOCATIONS } from '../lib/schedule.js';
+import { formatDateBR, lessonTypeLabel } from '../lib/format.js';
 import { lessonTypeSchema } from '../schemas/lesson.schema.js';
 
 const registerDeviceSchema = z.object({
@@ -111,7 +112,7 @@ export async function portalRoutes(app: FastifyInstance) {
 
     await notifyProfessors(app.prisma, {
       title: 'Aluno agendou uma aula',
-      body: `${student.nome} agendou uma aula de ${tipo} em ${data} às ${hora}.`,
+      body: `${student.nome} agendou ${lessonTypeLabel(tipo)} em ${formatDateBR(data)} às ${hora}, em ${local}.`,
     }).catch((error) => app.log.error({ err: error }, 'Falha ao notificar professor'));
 
     return reply.code(201).send(lesson);
@@ -134,7 +135,7 @@ export async function portalRoutes(app: FastifyInstance) {
 
     await notifyProfessors(app.prisma, {
       title: 'Aluno confirmou presença',
-      body: `${student.nome} confirmou a aula de ${lesson.hora} (${lesson.data}).`,
+      body: `${student.nome} confirmou ${lessonTypeLabel(lesson.tipo)} em ${formatDateBR(lesson.data)} às ${lesson.hora}.`,
     }).catch((error) => app.log.error({ err: error }, 'Falha ao notificar professor'));
 
     return updated;
@@ -157,7 +158,7 @@ export async function portalRoutes(app: FastifyInstance) {
 
     await notifyProfessors(app.prisma, {
       title: 'Aluno cancelou aula',
-      body: `${student.nome} cancelou a aula de ${lesson.hora} (${lesson.data}).`,
+      body: `${student.nome} cancelou ${lessonTypeLabel(lesson.tipo)} em ${formatDateBR(lesson.data)} às ${lesson.hora}.`,
     }).catch((error) => app.log.error({ err: error }, 'Falha ao notificar professor'));
 
     return updated;

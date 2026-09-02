@@ -20,10 +20,32 @@ const app = initializeApp(firebaseConfig);
 export const messaging = getMessaging(app);
 const analytics = getAnalytics(app);
 
+function isIOS(): boolean {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+// No iPhone, a Web Push API só funciona quando a página foi aberta pelo
+// ícone instalado na Tela de Início (display-mode: standalone) — abrir o
+// link direto no Safari (ex: veio de um WhatsApp) não dá suporte a push,
+// mesmo em iOS 16.4+. `navigator.standalone` é o jeito antigo do Safari
+// de expor isso, por isso checamos os dois.
+function isStandaloneApp(): boolean {
+    return (
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (navigator as unknown as { standalone?: boolean }).standalone === true
+    );
+}
+
 // Genérica: usada tanto pelo login do professor quanto pelo portal do
 // aluno — a mecânica de pedir permissão e gerar o token FCM é idêntica,
 // só muda pra quem o token depois é salvo no backend.
 export async function pedirPermissaoNotificacaoPush() {
+    if (isIOS() && !isStandaloneApp()) {
+        throw new Error(
+            'No iPhone, notificações só funcionam depois de adicionar essa página à Tela de Início: toque em Compartilhar no Safari, escolha "Adicionar à Tela de Início" e abra por esse ícone.'
+        );
+    }
+
     const permission = await Notification.requestPermission();
     console.log('[push] permissão de notificação:', permission);
     if (permission !== 'granted') return null;

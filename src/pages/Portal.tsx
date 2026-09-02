@@ -127,8 +127,12 @@ const Portal: React.FC = () => {
           variant: 'destructive',
         });
       }
-    } catch {
-      toast({ title: 'Erro ao ativar notificações', variant: 'destructive' });
+    } catch (error) {
+      toast({
+        title: 'Erro ao ativar notificações',
+        description: error instanceof Error ? error.message : undefined,
+        variant: 'destructive',
+      });
     }
   };
 
