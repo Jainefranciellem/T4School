@@ -120,4 +120,5 @@ model Settings {
   template_reminder     String  @default("Olá {{nome}}! Lembrete: sua aula de surf é hoje às {{hora}} no {{local}} com {{instrutor}}.")
   template_confirmed    String  @default("Presença confirmada! Te esperamos na aula de hoje.")
   template_cancelled    String  @default("Tudo bem — registramos sua ausência. Entre em contato para remarcar.")
+  template_rescheduled  String  @default("Olá {{nome}}! Sua aula foi remarcada para {{data}} às {{hora}}, em {{local}} com {{instrutor}}.")
 }

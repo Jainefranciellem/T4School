@@ -12,4 +12,5 @@ export const updateSettingsSchema = z.object({
   template_reminder: z.string().min(1).optional(),
   template_confirmed: z.string().min(1).optional(),
   template_cancelled: z.string().min(1).optional(),
+  template_rescheduled: z.string().min(1).optional(),
 });

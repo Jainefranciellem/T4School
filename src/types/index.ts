@@ -49,4 +49,5 @@ export interface AppSettings {
   template_reminder: string;
   template_confirmed: string;
   template_cancelled: string;
+  template_rescheduled: string;
 }

@@ -323,6 +323,18 @@ const Settings: React.FC = () => {
               }
             />
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="rescheduled-template">Aula remarcada</Label>
+            <Textarea
+              id="rescheduled-template"
+              rows={2}
+              value={form.template_rescheduled}
+              onChange={(e) =>
+                setForm((prev) => prev && { ...prev, template_rescheduled: e.target.value })
+              }
+            />
+          </div>
         </CardContent>
       </Card>
 

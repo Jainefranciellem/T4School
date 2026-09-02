@@ -352,6 +352,27 @@ async function notifyStatusChange(app, lesson) {
     app.log
   );
 }
+async function notifyReschedule(app, lesson) {
+  const settings = await app.prisma.settings.findUnique({ where: { id: "singleton" } });
+  if (!settings) return;
+  const student = await app.prisma.student.findUnique({ where: { id: lesson.aluno_id } });
+  if (!student) return;
+  await notifyStudent(
+    app.prisma,
+    settings,
+    student,
+    settings.template_rescheduled,
+    {
+      nome: student.nome,
+      hora: lesson.hora,
+      local: lesson.local,
+      instrutor: lesson.instrutor,
+      data: lesson.data
+    },
+    "Aula remarcada",
+    app.log
+  );
+}
 async function lessonsRoutes(app) {
   app.addHook("preHandler", requireAuth);
   app.get("/lessons", async (request) => {
@@ -392,6 +413,12 @@ async function lessonsRoutes(app) {
     if (data.status && data.status !== exists.status) {
       await notifyStatusChange(app, lesson).catch((error) => {
         app.log.error({ err: error, lessonId: lesson.id }, "Falha ao enviar notifica\xE7\xE3o de status");
+      });
+    }
+    const rescheduled = data.data !== void 0 && data.data !== exists.data || data.hora !== void 0 && data.hora !== exists.hora;
+    if (rescheduled) {
+      await notifyReschedule(app, lesson).catch((error) => {
+        app.log.error({ err: error, lessonId: lesson.id }, "Falha ao enviar notifica\xE7\xE3o de remarca\xE7\xE3o");
       });
     }
     return lesson;
@@ -456,7 +483,8 @@ var updateSettingsSchema = z6.object({
   double_reminder_minutes: z6.number().int().min(1).max(180).optional(),
   template_reminder: z6.string().min(1).optional(),
   template_confirmed: z6.string().min(1).optional(),
-  template_cancelled: z6.string().min(1).optional()
+  template_cancelled: z6.string().min(1).optional(),
+  template_rescheduled: z6.string().min(1).optional()
 });
 
 // src/routes/settings.routes.ts

@@ -33,6 +33,30 @@ async function notifyStatusChange(app: FastifyInstance, lesson: Lesson) {
   );
 }
 
+async function notifyReschedule(app: FastifyInstance, lesson: Lesson) {
+  const settings = await app.prisma.settings.findUnique({ where: { id: 'singleton' } });
+  if (!settings) return;
+
+  const student = await app.prisma.student.findUnique({ where: { id: lesson.aluno_id } });
+  if (!student) return;
+
+  await notifyStudent(
+    app.prisma,
+    settings,
+    student,
+    settings.template_rescheduled,
+    {
+      nome: student.nome,
+      hora: lesson.hora,
+      local: lesson.local,
+      instrutor: lesson.instrutor,
+      data: lesson.data,
+    },
+    'Aula remarcada',
+    app.log
+  );
+}
+
 export async function lessonsRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireAuth);
 
@@ -91,6 +115,16 @@ export async function lessonsRoutes(app: FastifyInstance) {
     if (data.status && data.status !== exists.status) {
       await notifyStatusChange(app, lesson).catch((error) => {
         app.log.error({ err: error, lessonId: lesson.id }, 'Falha ao enviar notificação de status');
+      });
+    }
+
+    const rescheduled =
+      (data.data !== undefined && data.data !== exists.data) ||
+      (data.hora !== undefined && data.hora !== exists.hora);
+
+    if (rescheduled) {
+      await notifyReschedule(app, lesson).catch((error) => {
+        app.log.error({ err: error, lessonId: lesson.id }, 'Falha ao enviar notificação de remarcação');
       });
     }
 
