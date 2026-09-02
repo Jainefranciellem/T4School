@@ -229,6 +229,39 @@ const Students: React.FC = () => {
     toast({ title: 'Link copiado!', description: 'Manda esse link pro aluno pelo WhatsApp.' });
   };
 
+  const renderStudentActions = (student: Student) => (
+    <>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => handleSendWhatsApp(student)}
+        title="Enviar WhatsApp"
+      >
+        <MessageCircle className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => handleCopyPortalLink(student)}
+        title="Copiar link do portal do aluno"
+      >
+        <LinkIcon className="h-4 w-4" />
+      </Button>
+      <Button variant="ghost" size="icon" onClick={() => handleOpenModal(student)} title="Editar">
+        <Edit className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="text-red-500 hover:text-red-600 hover:bg-red-50"
+        onClick={() => handleDeleteClick(student)}
+        title="Excluir"
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+    </>
+  );
+
   /* =======================
      RENDER
   ======================= */
@@ -251,7 +284,7 @@ const Students: React.FC = () => {
 
       {/* Filtros */}
       <Card>
-        <CardContent className="p-4 flex gap-4">
+        <CardContent className="p-4 flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" />
             <Input
@@ -281,8 +314,46 @@ const Students: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Tabela */}
-      <Card>
+      {/* Cards (mobile) */}
+      <div className="space-y-3 md:hidden">
+        {filteredStudents.map((student) => (
+          <Card key={student.id}>
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="font-semibold">{student.nome}</p>
+                  <Badge variant="secondary" className="mt-1">
+                    {student.plano}
+                  </Badge>
+                </div>
+                <Badge variant={student.status === 'Ativo' ? 'success' : 'destructive'}>
+                  {student.status}
+                </Badge>
+              </div>
+
+              <div className="text-sm text-muted-foreground space-y-1">
+                <p className="flex items-center gap-1">
+                  <Phone className="h-3 w-3" /> {student.telefone}
+                </p>
+                <p className="flex items-center gap-1">
+                  <Mail className="h-3 w-3" /> {student.email}
+                </p>
+                <p>{student.aulas_restantes} aula(s) restante(s)</p>
+              </div>
+
+              <div className="flex justify-end gap-1 pt-2 border-t border-border">
+                {renderStudentActions(student)}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+        {filteredStudents.length === 0 && (
+          <p className="text-center text-muted-foreground py-8">Nenhum aluno encontrado</p>
+        )}
+      </div>
+
+      {/* Tabela (desktop) */}
+      <Card className="hidden md:block">
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -327,41 +398,7 @@ const Students: React.FC = () => {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleSendWhatsApp(student)}
-                        title="Enviar WhatsApp"
-                      >
-                        <MessageCircle className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleCopyPortalLink(student)}
-                        title="Copiar link do portal do aluno"
-                      >
-                        <LinkIcon className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleOpenModal(student)}
-                        title="Editar"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                        onClick={() => handleDeleteClick(student)}
-                        title="Excluir"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <div className="flex justify-end gap-2">{renderStudentActions(student)}</div>
                   </TableCell>
                 </TableRow>
               ))}

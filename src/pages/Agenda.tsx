@@ -167,9 +167,9 @@ const Agenda: React.FC = () => {
       {/* Navigation and view controls */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-col items-center sm:flex-row sm:justify-between gap-4">
             {/* Date navigation */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
               <Button
                 variant="outline"
                 size="icon"
