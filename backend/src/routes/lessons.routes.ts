@@ -17,6 +17,7 @@ async function notifyStatusChange(app: FastifyInstance, lesson: Lesson) {
   const subject = lesson.status === 'Confirmada' ? 'Aula confirmada' : 'Aula cancelada';
 
   await notifyStudent(
+    app.prisma,
     settings,
     student,
     template,

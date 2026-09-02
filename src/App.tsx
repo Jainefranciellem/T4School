@@ -12,6 +12,7 @@ import Agenda from "@/pages/Agenda";
 import Students from "@/pages/Students";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
+import Portal from "@/pages/Portal";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/portal/:token" element={<Portal />} />
             <Route path="/" element={<MainLayout />}>
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />

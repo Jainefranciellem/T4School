@@ -38,6 +38,7 @@ import {
   Trash2,
   Calendar,
   MessageCircle,
+  Link as LinkIcon,
   Phone,
   Mail,
   Filter,
@@ -221,6 +222,13 @@ const Students: React.FC = () => {
     window.open(`https://wa.me/${student.telefone}`, '_blank');
   };
 
+  const handleCopyPortalLink = async (student: Student) => {
+    if (!student.access_token) return;
+    const link = `${window.location.origin}/portal/${student.access_token}`;
+    await navigator.clipboard.writeText(link);
+    toast({ title: 'Link copiado!', description: 'Manda esse link pro aluno pelo WhatsApp.' });
+  };
+
   /* =======================
      RENDER
   ======================= */
@@ -327,6 +335,14 @@ const Students: React.FC = () => {
                         title="Enviar WhatsApp"
                       >
                         <MessageCircle className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleCopyPortalLink(student)}
+                        title="Copiar link do portal do aluno"
+                      >
+                        <LinkIcon className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"

@@ -235,13 +235,46 @@ async function sendEmail({ apiKey, from, to, subject, text }) {
   }
 }
 
+// src/lib/firebase-admin.ts
+import { initializeApp, cert, getApps } from "firebase-admin/app";
+import { getMessaging } from "firebase-admin/messaging";
+function getFirebaseApp() {
+  if (getApps().length > 0) return getApps()[0];
+  if (!env.FIREBASE_SERVICE_ACCOUNT) return null;
+  const serviceAccount = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT);
+  return initializeApp({ credential: cert(serviceAccount) });
+}
+async function sendPushNotification(tokens, notification) {
+  const app = getFirebaseApp();
+  if (!app || tokens.length === 0) {
+    return { sent: 0, failed: 0, invalidTokens: [] };
+  }
+  const messaging = getMessaging(app);
+  let sent = 0;
+  let failed = 0;
+  const invalidTokens = [];
+  for (const token of tokens) {
+    try {
+      await messaging.send({ token, notification });
+      sent++;
+    } catch (error) {
+      failed++;
+      const code = error?.errorInfo?.code;
+      if (code === "messaging/registration-token-not-registered" || code === "messaging/invalid-registration-token") {
+        invalidTokens.push(token);
+      }
+    }
+  }
+  return { sent, failed, invalidTokens };
+}
+
 // src/lib/message-template.ts
 function renderTemplate(template, vars) {
   return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_match, key) => vars[key] ?? "");
 }
 
 // src/lib/notify-student.ts
-async function notifyStudent(settings, student, template, vars, emailSubject, logger) {
+async function notifyStudent(prisma, settings, student, template, vars, emailSubject, logger) {
   let sent = 0;
   let failed = 0;
   const message = renderTemplate(template, vars);
@@ -274,6 +307,23 @@ async function notifyStudent(settings, student, template, vars, emailSubject, lo
       logger.error({ err: error }, "Falha ao enviar email");
     }
   }
+  const deviceTokens = await prisma.studentDeviceToken.findMany({ where: { student_id: student.id } });
+  if (deviceTokens.length > 0) {
+    try {
+      const result = await sendPushNotification(
+        deviceTokens.map((d) => d.token),
+        { title: emailSubject, body: message }
+      );
+      sent += result.sent;
+      failed += result.failed;
+      if (result.invalidTokens.length > 0) {
+        await prisma.studentDeviceToken.deleteMany({ where: { token: { in: result.invalidTokens } } });
+      }
+    } catch (error) {
+      failed++;
+      logger.error({ err: error }, "Falha ao enviar push pro aluno");
+    }
+  }
   return { sent, failed };
 }
 
@@ -287,6 +337,7 @@ async function notifyStatusChange(app, lesson) {
   const template = lesson.status === "Confirmada" ? settings.template_confirmed : settings.template_cancelled;
   const subject = lesson.status === "Confirmada" ? "Aula confirmada" : "Aula cancelada";
   await notifyStudent(
+    app.prisma,
     settings,
     student,
     template,
@@ -452,39 +503,6 @@ async function deviceTokensRoutes(app) {
 // src/jobs/reminders.job.ts
 import { LessonStatus } from "@prisma/client";
 
-// src/lib/firebase-admin.ts
-import { initializeApp, cert, getApps } from "firebase-admin/app";
-import { getMessaging } from "firebase-admin/messaging";
-function getFirebaseApp() {
-  if (getApps().length > 0) return getApps()[0];
-  if (!env.FIREBASE_SERVICE_ACCOUNT) return null;
-  const serviceAccount = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT);
-  return initializeApp({ credential: cert(serviceAccount) });
-}
-async function sendPushNotification(tokens, notification) {
-  const app = getFirebaseApp();
-  if (!app || tokens.length === 0) {
-    return { sent: 0, failed: 0, invalidTokens: [] };
-  }
-  const messaging = getMessaging(app);
-  let sent = 0;
-  let failed = 0;
-  const invalidTokens = [];
-  for (const token of tokens) {
-    try {
-      await messaging.send({ token, notification });
-      sent++;
-    } catch (error) {
-      failed++;
-      const code = error?.errorInfo?.code;
-      if (code === "messaging/registration-token-not-registered" || code === "messaging/invalid-registration-token") {
-        invalidTokens.push(token);
-      }
-    }
-  }
-  return { sent, failed, invalidTokens };
-}
-
 // src/lib/notify-professors.ts
 async function notifyProfessors(prisma, notification) {
   const deviceTokens = await prisma.deviceToken.findMany();
@@ -538,6 +556,7 @@ async function runReminderJob(prisma, logger) {
     const isSecondTierDue = settings.double_reminder && !lesson.lembrete_dobrado_enviado && remainingMinutes <= settings.double_reminder_minutes;
     if (isFirstTierDue) {
       const result = await notifyStudent(
+        prisma,
         settings,
         lesson.student,
         settings.template_reminder,
@@ -552,6 +571,7 @@ async function runReminderJob(prisma, logger) {
     }
     if (isSecondTierDue) {
       const result = await notifyStudent(
+        prisma,
         settings,
         lesson.student,
         settings.template_reminder,
@@ -600,6 +620,80 @@ async function jobsRoutes(app) {
   app.get("/internal/jobs/reminders", (request, reply) => handleReminderJob(app, request, reply));
 }
 
+// src/routes/portal.routes.ts
+import { z as z8 } from "zod";
+var registerDeviceSchema2 = z8.object({
+  device_token: z8.string().min(1),
+  platform: z8.string().min(1).default("web")
+});
+var ACTIVE_STATUSES2 = ["Agendada", "Confirmada"];
+async function portalRoutes(app) {
+  app.get("/portal/:token", async (request, reply) => {
+    const { token } = request.params;
+    const student = await app.prisma.student.findUnique({ where: { access_token: token } });
+    if (!student) return reply.code(404).send({ message: "Link inv\xE1lido" });
+    const { access_token, ...safeStudent } = student;
+    return safeStudent;
+  });
+  app.get("/portal/:token/lessons", async (request, reply) => {
+    const { token } = request.params;
+    const student = await app.prisma.student.findUnique({ where: { access_token: token } });
+    if (!student) return reply.code(404).send({ message: "Link inv\xE1lido" });
+    return app.prisma.lesson.findMany({
+      where: { aluno_id: student.id },
+      orderBy: [{ data: "desc" }, { hora: "desc" }]
+    });
+  });
+  app.put("/portal/:token/lessons/:id/confirm", async (request, reply) => {
+    const { token, id } = request.params;
+    const student = await app.prisma.student.findUnique({ where: { access_token: token } });
+    if (!student) return reply.code(404).send({ message: "Link inv\xE1lido" });
+    const lesson = await app.prisma.lesson.findUnique({ where: { id } });
+    if (!lesson || lesson.aluno_id !== student.id) {
+      return reply.code(404).send({ message: "Aula n\xE3o encontrada" });
+    }
+    if (lesson.status !== "Agendada") {
+      return reply.code(422).send({ message: "Essa aula n\xE3o pode mais ser confirmada" });
+    }
+    const updated = await app.prisma.lesson.update({ where: { id }, data: { status: "Confirmada" } });
+    await notifyProfessors(app.prisma, {
+      title: "Aluno confirmou presen\xE7a",
+      body: `${student.nome} confirmou a aula de ${lesson.hora} (${lesson.data}).`
+    }).catch((error) => app.log.error({ err: error }, "Falha ao notificar professor"));
+    return updated;
+  });
+  app.put("/portal/:token/lessons/:id/cancel", async (request, reply) => {
+    const { token, id } = request.params;
+    const student = await app.prisma.student.findUnique({ where: { access_token: token } });
+    if (!student) return reply.code(404).send({ message: "Link inv\xE1lido" });
+    const lesson = await app.prisma.lesson.findUnique({ where: { id } });
+    if (!lesson || lesson.aluno_id !== student.id) {
+      return reply.code(404).send({ message: "Aula n\xE3o encontrada" });
+    }
+    if (!ACTIVE_STATUSES2.includes(lesson.status)) {
+      return reply.code(422).send({ message: "Essa aula n\xE3o pode mais ser cancelada" });
+    }
+    const updated = await app.prisma.lesson.update({ where: { id }, data: { status: "Cancelada" } });
+    await notifyProfessors(app.prisma, {
+      title: "Aluno cancelou aula",
+      body: `${student.nome} cancelou a aula de ${lesson.hora} (${lesson.data}).`
+    }).catch((error) => app.log.error({ err: error }, "Falha ao notificar professor"));
+    return updated;
+  });
+  app.post("/portal/:token/device-token", async (request, reply) => {
+    const { token } = request.params;
+    const student = await app.prisma.student.findUnique({ where: { access_token: token } });
+    if (!student) return reply.code(404).send({ message: "Link inv\xE1lido" });
+    const { device_token, platform } = registerDeviceSchema2.parse(request.body);
+    const deviceToken = await app.prisma.studentDeviceToken.upsert({
+      where: { token: device_token },
+      update: { student_id: student.id, platform },
+      create: { student_id: student.id, token: device_token, platform }
+    });
+    return reply.code(201).send(deviceToken);
+  });
+}
+
 // src/app.ts
 async function buildApp() {
   const app = Fastify({ logger: true });
@@ -626,6 +720,7 @@ async function buildApp() {
   await app.register(settingsRoutes);
   await app.register(deviceTokensRoutes);
   await app.register(jobsRoutes);
+  await app.register(portalRoutes);
   return app;
 }
 

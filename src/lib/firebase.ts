@@ -20,7 +20,10 @@ const app = initializeApp(firebaseConfig);
 export const messaging = getMessaging(app);
 const analytics = getAnalytics(app);
 
-export async function pedirPermissaoNotificacaoProfessor() {
+// Genérica: usada tanto pelo login do professor quanto pelo portal do
+// aluno — a mecânica de pedir permissão e gerar o token FCM é idêntica,
+// só muda pra quem o token depois é salvo no backend.
+export async function pedirPermissaoNotificacaoPush() {
     const permission = await Notification.requestPermission();
     console.log('[push] permissão de notificação:', permission);
     if (permission !== 'granted') return null;
