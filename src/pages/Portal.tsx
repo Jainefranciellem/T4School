@@ -22,9 +22,10 @@ import {
   registerPortalDeviceToken,
   getPortalAvailableSlots,
   createPortalLesson,
+  getPortalConfig,
 } from '@/lib/portal.service';
 import { pedirPermissaoNotificacaoPush } from '@/lib/firebase';
-import { lessonTypeLabel, lessonTypes, locations } from '@/lib/constants';
+import { lessonTypeLabel, lessonTypes } from '@/lib/constants';
 import { Loader2, Waves, MapPin, User, Bell, Check, X, Calendar, CalendarPlus } from 'lucide-react';
 import { format, differenceInMinutes } from 'date-fns';
 import type { Lesson } from '@/types';
@@ -53,7 +54,7 @@ const Portal: React.FC = () => {
   const [bookingTipo, setBookingTipo] = useState<'Surf' | 'SurfSkate'>('Surf');
   const [bookingData, setBookingData] = useState('');
   const [bookingHora, setBookingHora] = useState('');
-  const [bookingLocal, setBookingLocal] = useState(locations[0]);
+  const [bookingLocal, setBookingLocal] = useState('');
 
   // O manifest.json tem start_url "/" (a tela de login do professor). No
   // iOS, "Adicionar à Tela de Início" usa o start_url do manifest em vez
@@ -80,6 +81,20 @@ const Portal: React.FC = () => {
     queryFn: () => getPortalLessons(token!),
     enabled: !!token && !isError,
   });
+
+  const { data: portalConfig } = useQuery({
+    queryKey: ['portal-config', token],
+    queryFn: () => getPortalConfig(token!),
+    enabled: !!token && !isError,
+  });
+
+  // Locais são cadastrados pelo professor em Configurações — assim que a
+  // lista chega, pré-seleciona o primeiro pra não deixar o select vazio.
+  useEffect(() => {
+    if (portalConfig?.locations.length && !bookingLocal) {
+      setBookingLocal(portalConfig.locations[0]);
+    }
+  }, [portalConfig, bookingLocal]);
 
   const confirmMutation = useMutation({
     mutationFn: (lessonId: string) => confirmPortalLesson(token!, lessonId),
@@ -282,12 +297,16 @@ const Portal: React.FC = () => {
                 <Label htmlFor="booking-local" className="flex items-center gap-2">
                   <MapPin className="h-4 w-4" /> Local
                 </Label>
-                <Select value={bookingLocal} onValueChange={setBookingLocal}>
+                <Select
+                  value={bookingLocal}
+                  onValueChange={setBookingLocal}
+                  disabled={!portalConfig?.locations.length}
+                >
                   <SelectTrigger id="booking-local">
-                    <SelectValue />
+                    <SelectValue placeholder="Carregando locais..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {locations.map((location) => (
+                    {portalConfig?.locations.map((location) => (
                       <SelectItem key={location} value={location}>
                         {location}
                       </SelectItem>
@@ -307,7 +326,7 @@ const Portal: React.FC = () => {
                 </Button>
                 <Button
                   className="flex-1"
-                  disabled={!bookingData || !bookingHora || bookingMutation.isPending}
+                  disabled={!bookingData || !bookingHora || !bookingLocal || bookingMutation.isPending}
                   onClick={() => bookingMutation.mutate()}
                 >
                   {bookingMutation.isPending ? (

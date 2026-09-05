@@ -121,4 +121,6 @@ model Settings {
   template_confirmed    String  @default("Presença confirmada! Te esperamos na aula de hoje.")
   template_cancelled    String  @default("Tudo bem — registramos sua ausência. Entre em contato para remarcar.")
   template_rescheduled  String  @default("Olá {{nome}}! Sua aula foi remarcada para {{data}} às {{hora}}, em {{local}} com {{instrutor}}.")
+  instructor_name       String   @default("Torquato")
+  locations             String[] @default(["Cinelandia", "Bomba", "Cara de Sapo", "Sementeira"])
 }

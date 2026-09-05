@@ -58,6 +58,10 @@ export function getPortalAvailableSlots(
   );
 }
 
+export function getPortalConfig(token: string): Promise<{ instrutor: string; locations: string[] }> {
+  return portalFetch(`/portal/${token}/config`);
+}
+
 export function createPortalLesson(
   token: string,
   payload: { tipo: string; data: string; hora: string; local: string }

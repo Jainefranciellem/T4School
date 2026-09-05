@@ -1,10 +1,13 @@
 import { z } from 'zod';
 
 export const updateSettingsSchema = z.object({
-  whatsapp_phone_id: z.string().optional(),
-  whatsapp_token: z.string().optional(),
-  resend_api_key: z.string().optional(),
-  email_from: z.string().min(1).optional(),
+  // Nullable porque o form do painel sempre reenvia o objeto inteiro de
+  // Settings de volta — inclusive esses campos quando ainda não foram
+  // configurados (o GET /settings retorna null pra eles nesse caso).
+  whatsapp_phone_id: z.string().nullable().optional(),
+  whatsapp_token: z.string().nullable().optional(),
+  resend_api_key: z.string().nullable().optional(),
+  email_from: z.string().min(1).nullable().optional(),
   send_reminders: z.boolean().optional(),
   reminder_hours: z.number().int().min(1).max(72).optional(),
   double_reminder: z.boolean().optional(),
@@ -13,4 +16,6 @@ export const updateSettingsSchema = z.object({
   template_confirmed: z.string().min(1).optional(),
   template_cancelled: z.string().min(1).optional(),
   template_rescheduled: z.string().min(1).optional(),
+  instructor_name: z.string().min(1).optional(),
+  locations: z.array(z.string().min(1)).min(1).optional(),
 });

@@ -50,4 +50,6 @@ export interface AppSettings {
   template_confirmed: string;
   template_cancelled: string;
   template_rescheduled: string;
+  instructor_name: string;
+  locations: string[];
 }

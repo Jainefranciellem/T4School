@@ -1,12 +1,3 @@
-export const instructors = ['Torquato'];
-
-export const locations = [
-  'Cinelandia',
-  'Bomba',
-  'Cara de Sapo',
-  'Sementeira',
-];
-
 export const lessonTypes = [
   { value: 'Surf' as const, label: 'Aula de Surf' },
   { value: 'SurfSkate' as const, label: 'Surf Skate' },

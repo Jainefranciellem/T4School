@@ -18,6 +18,10 @@ import {
   Save,
   Loader2,
   ExternalLink,
+  MapPin,
+  User,
+  Plus,
+  X,
 } from 'lucide-react';
 
 const Settings: React.FC = () => {
@@ -30,6 +34,21 @@ const Settings: React.FC = () => {
   });
 
   const [form, setForm] = useState<AppSettings | null>(null);
+  const [newLocation, setNewLocation] = useState('');
+
+  const handleAddLocation = () => {
+    const value = newLocation.trim();
+    if (!value) return;
+    setForm((prev) => {
+      if (!prev || prev.locations.includes(value)) return prev;
+      return { ...prev, locations: [...prev.locations, value] };
+    });
+    setNewLocation('');
+  };
+
+  const handleRemoveLocation = (location: string) => {
+    setForm((prev) => prev && { ...prev, locations: prev.locations.filter((l) => l !== location) });
+  };
 
   useEffect(() => {
     if (settings) setForm(settings);
@@ -270,6 +289,76 @@ const Settings: React.FC = () => {
               )}
             </>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Instructor and locations */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5 text-primary" />
+            Instrutor e Locais
+          </CardTitle>
+          <CardDescription>
+            Usados na agenda e no auto-agendamento do aluno pelo portal
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="instructor-name">Instrutor</Label>
+            <Input
+              id="instructor-name"
+              value={form.instructor_name}
+              onChange={(e) =>
+                setForm((prev) => prev && { ...prev, instructor_name: e.target.value })
+              }
+              className="max-w-sm"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              Locais das aulas
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              {form.locations.map((location) => (
+                <span
+                  key={location}
+                  className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-sm"
+                >
+                  {location}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveLocation(location)}
+                    className="text-muted-foreground hover:text-destructive"
+                    title="Remover local"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+              {form.locations.length === 0 && (
+                <p className="text-sm text-muted-foreground">Nenhum local cadastrado</p>
+              )}
+            </div>
+            <div className="flex gap-2 max-w-sm">
+              <Input
+                placeholder="Novo local"
+                value={newLocation}
+                onChange={(e) => setNewLocation(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddLocation();
+                  }
+                }}
+              />
+              <Button type="button" variant="outline" onClick={handleAddLocation}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

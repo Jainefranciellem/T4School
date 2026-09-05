@@ -20,11 +20,23 @@ const createPortalLessonSchema = z.object({
   tipo: lessonTypeSchema.default('Surf'),
   data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use o formato yyyy-MM-dd'),
   hora: z.string().regex(/^\d{2}:\d{2}$/, 'Use o formato HH:mm'),
-  local: z.enum(DEFAULT_LOCATIONS as [string, ...string[]]),
+  local: z.string().min(1),
 });
 
 const ACTIVE_STATUSES: LessonStatus[] = ['Agendada', 'Confirmada'];
 const CANCEL_LOCK_MINUTES = 15;
+
+// Instrutor e locais são editáveis pelo professor em Configurações — os
+// valores em schedule.ts só entram como fallback se o singleton de Settings
+// ainda não existir (nunca deveria acontecer em produção, já que o GET/PUT
+// /settings sempre faz upsert, mas evita um 500 bobo nessa rota pública).
+async function getBookingConfig(app: FastifyInstance) {
+  const settings = await app.prisma.settings.findUnique({ where: { id: 'singleton' } });
+  return {
+    instrutor: settings?.instructor_name || DEFAULT_INSTRUCTOR,
+    locations: settings?.locations?.length ? settings.locations : DEFAULT_LOCATIONS,
+  };
+}
 
 // Rotas públicas do portal do aluno: sem JWT, autenticadas só pelo
 // access_token (não-adivinhável) na própria URL. Cada rota busca o aluno
@@ -49,6 +61,14 @@ export async function portalRoutes(app: FastifyInstance) {
       where: { aluno_id: student.id },
       orderBy: [{ data: 'desc' }, { hora: 'desc' }],
     });
+  });
+
+  app.get('/portal/:token/config', async (request, reply) => {
+    const { token } = request.params as { token: string };
+    const student = await app.prisma.student.findUnique({ where: { access_token: token } });
+    if (!student) return reply.code(404).send({ message: 'Link inválido' });
+
+    return getBookingConfig(app);
   });
 
   app.get('/portal/:token/available-slots', async (request, reply) => {
@@ -86,6 +106,11 @@ export async function portalRoutes(app: FastifyInstance) {
       return reply.code(422).send({ message: 'Esse horário não está disponível' });
     }
 
+    const { instrutor, locations } = await getBookingConfig(app);
+    if (!locations.includes(local)) {
+      return reply.code(422).send({ message: 'Local inválido' });
+    }
+
     const existing = await app.prisma.lesson.findFirst({
       where: { data, hora, tipo, status: { in: ACTIVE_STATUSES } },
     });
@@ -101,7 +126,7 @@ export async function portalRoutes(app: FastifyInstance) {
           hora,
           tipo,
           local,
-          instrutor: DEFAULT_INSTRUCTOR,
+          instrutor,
           status: 'Agendada',
         },
       }),

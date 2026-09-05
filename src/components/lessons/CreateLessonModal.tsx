@@ -19,12 +19,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { instructors, locations, lessonTypes, getAvailableTimes } from '@/lib/constants';
+import { lessonTypes, getAvailableTimes } from '@/lib/constants';
 import { Lesson } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Calendar, Clock, MapPin, User, MessageCircle, Waves } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { listarAlunos } from '@/lib/students.service';
+import { getSettings } from '@/lib/settings.service';
 
 interface CreateLessonModalProps {
   isOpen: boolean;
@@ -48,8 +49,8 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
     tipo: 'Surf' as 'Surf' | 'SurfSkate',
     data: '',
     hora: '',
-    local: locations[0],
-    instrutor: instructors[0],
+    local: '',
+    instrutor: '',
     observacoes: '',
     notificar: true,
   });
@@ -65,6 +66,29 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
   });
 
   const activeStudents = students.filter((s) => s.status === 'Ativo');
+
+  // Instrutor e locais são cadastrados em Configurações
+  const { data: settings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: getSettings,
+    enabled: isOpen,
+    staleTime: 1000 * 60 * 5,
+  });
+  const locations = settings?.locations ?? [];
+  const instructors = settings?.instructor_name ? [settings.instructor_name] : [];
+
+  // Preenche local/instrutor com o padrão assim que as configurações
+  // carregam, mas só numa aula nova — editar uma aula existente mantém o
+  // que já estava salvo, mesmo que não bata mais com a lista atual.
+  useEffect(() => {
+    if (isOpen && !editLesson && settings) {
+      setFormData((prev) => ({
+        ...prev,
+        local: prev.local || settings.locations[0] || '',
+        instrutor: prev.instrutor || settings.instructor_name || '',
+      }));
+    }
+  }, [isOpen, editLesson, settings]);
 
   // Update form data when editLesson changes or modal opens
   useEffect(() => {
@@ -89,8 +113,8 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
           tipo: 'Surf',
           data: '',
           hora: '',
-          local: locations[0],
-          instrutor: instructors[0],
+          local: '',
+          instrutor: '',
           observacoes: '',
           notificar: true,
         });
