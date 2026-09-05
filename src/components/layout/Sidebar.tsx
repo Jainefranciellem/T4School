@@ -8,6 +8,7 @@ import {
     LayoutDashboard,
     Calendar,
     Users,
+    PackageOpen,
     BarChart3,
     Settings,
     LogOut,
@@ -24,6 +25,7 @@ const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/agenda', icon: Calendar, label: 'Agenda' },
     { path: '/alunos', icon: Users, label: 'Alunos' },
+    { path: '/planos', icon: PackageOpen, label: 'Planos' },
     { path: '/relatorios', icon: BarChart3, label: 'Relatórios' },
     { path: '/configuracoes', icon: Settings, label: 'Configurações' },
 ];

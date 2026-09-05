@@ -10,6 +10,7 @@ import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Agenda from "@/pages/Agenda";
 import Students from "@/pages/Students";
+import Plans from "@/pages/Plans";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
 import Portal from "@/pages/Portal";
@@ -33,6 +34,7 @@ const App = () => (
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="agenda" element={<Agenda />} />
               <Route path="alunos" element={<Students />} />
+              <Route path="planos" element={<Plans />} />
               <Route path="relatorios" element={<Reports />} />
               <Route path="configuracoes" element={<Settings />} />
             </Route>
