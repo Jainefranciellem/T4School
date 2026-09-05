@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { LessonStatus } from '@prisma/client';
 import { z } from 'zod';
 import { notifyProfessors } from '../lib/notify-professors.js';
-import { getScheduledTimes, DEFAULT_INSTRUCTOR, DEFAULT_LOCATIONS } from '../lib/schedule.js';
+import { getScheduledTimes, minutesUntilLesson, DEFAULT_INSTRUCTOR, DEFAULT_LOCATIONS } from '../lib/schedule.js';
 import { formatDateBR, lessonTypeLabel } from '../lib/format.js';
 import { lessonTypeSchema } from '../schemas/lesson.schema.js';
 
@@ -24,6 +24,7 @@ const createPortalLessonSchema = z.object({
 });
 
 const ACTIVE_STATUSES: LessonStatus[] = ['Agendada', 'Confirmada'];
+const CANCEL_LOCK_MINUTES = 15;
 
 // Rotas públicas do portal do aluno: sem JWT, autenticadas só pelo
 // access_token (não-adivinhável) na própria URL. Cada rota busca o aluno
@@ -152,6 +153,11 @@ export async function portalRoutes(app: FastifyInstance) {
     }
     if (!ACTIVE_STATUSES.includes(lesson.status)) {
       return reply.code(422).send({ message: 'Essa aula não pode mais ser cancelada' });
+    }
+    if (minutesUntilLesson(lesson.data, lesson.hora) < CANCEL_LOCK_MINUTES) {
+      return reply
+        .code(422)
+        .send({ message: `Só é possível cancelar até ${CANCEL_LOCK_MINUTES} minutos antes do início da aula` });
     }
 
     const updated = await app.prisma.lesson.update({ where: { id }, data: { status: 'Cancelada' } });

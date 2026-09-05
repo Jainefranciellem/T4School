@@ -26,7 +26,15 @@ import {
 import { pedirPermissaoNotificacaoPush } from '@/lib/firebase';
 import { lessonTypeLabel, lessonTypes, locations } from '@/lib/constants';
 import { Loader2, Waves, MapPin, User, Bell, Check, X, Calendar, CalendarPlus } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, differenceInMinutes } from 'date-fns';
+import type { Lesson } from '@/types';
+
+const CANCEL_LOCK_MINUTES = 15;
+
+function isCancelLocked(lesson: Lesson): boolean {
+  const lessonDateTime = new Date(`${lesson.data}T${lesson.hora}:00`);
+  return differenceInMinutes(lessonDateTime, new Date()) < CANCEL_LOCK_MINUTES;
+}
 
 const statusConfig = {
   Agendada: { variant: 'scheduled' as const, label: 'Agendada' },
@@ -356,7 +364,7 @@ const Portal: React.FC = () => {
                 </p>
 
                 {lesson.status === 'Agendada' && (
-                  <div className="flex gap-2 pt-2 border-t border-border">
+                  <div className="flex items-center gap-2 pt-2 border-t border-border">
                     <Button
                       size="sm"
                       variant="success"
@@ -365,29 +373,41 @@ const Portal: React.FC = () => {
                     >
                       <Check className="h-4 w-4" /> Confirmar
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive hover:text-destructive"
-                      disabled={cancelMutation.isPending}
-                      onClick={() => cancelMutation.mutate(lesson.id)}
-                    >
-                      <X className="h-4 w-4" /> Cancelar
-                    </Button>
+                    {!isCancelLocked(lesson) ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        disabled={cancelMutation.isPending}
+                        onClick={() => cancelMutation.mutate(lesson.id)}
+                      >
+                        <X className="h-4 w-4" /> Cancelar
+                      </Button>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Não é mais possível cancelar (menos de {CANCEL_LOCK_MINUTES} min pro início)
+                      </p>
+                    )}
                   </div>
                 )}
 
                 {lesson.status === 'Confirmada' && (
-                  <div className="flex gap-2 pt-2 border-t border-border">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive hover:text-destructive"
-                      disabled={cancelMutation.isPending}
-                      onClick={() => cancelMutation.mutate(lesson.id)}
-                    >
-                      <X className="h-4 w-4" /> Cancelar
-                    </Button>
+                  <div className="flex items-center gap-2 pt-2 border-t border-border">
+                    {!isCancelLocked(lesson) ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        disabled={cancelMutation.isPending}
+                        onClick={() => cancelMutation.mutate(lesson.id)}
+                      >
+                        <X className="h-4 w-4" /> Cancelar
+                      </Button>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Não é mais possível cancelar (menos de {CANCEL_LOCK_MINUTES} min pro início)
+                      </p>
+                    )}
                   </div>
                 )}
               </CardContent>

@@ -2,13 +2,9 @@ import { LessonStatus, type PrismaClient } from '@prisma/client';
 import type { FastifyBaseLogger } from 'fastify';
 import { notifyStudent } from '../lib/notify-student.js';
 import { notifyProfessors } from '../lib/notify-professors.js';
+import { minutesUntilLesson } from '../lib/schedule.js';
 
 const ACTIVE_STATUSES: LessonStatus[] = [LessonStatus.Agendada, LessonStatus.Confirmada];
-
-function minutesUntil(data: string, hora: string, now: Date): number {
-  const lessonDateTime = new Date(`${data}T${hora}:00`);
-  return (lessonDateTime.getTime() - now.getTime()) / (1000 * 60);
-}
 
 export interface ReminderJobResult {
   sent: number;
@@ -40,7 +36,7 @@ export async function runReminderJob(
   let failed = 0;
 
   for (const lesson of candidates) {
-    const remainingMinutes = minutesUntil(lesson.data, lesson.hora, now);
+    const remainingMinutes = minutesUntilLesson(lesson.data, lesson.hora, now);
     if (remainingMinutes < 0) continue;
     const remainingHours = remainingMinutes / 60;
 

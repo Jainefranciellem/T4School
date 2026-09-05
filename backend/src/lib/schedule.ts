@@ -27,3 +27,8 @@ export function getScheduledTimes(tipo: string, dateStr: string): string[] {
   const schedule = tipo === 'SurfSkate' ? SURF_SKATE_SCHEDULE : SURF_SCHEDULE;
   return schedule[weekday] ?? [];
 }
+
+export function minutesUntilLesson(data: string, hora: string, now: Date = new Date()): number {
+  const lessonDateTime = new Date(`${data}T${hora}:00`);
+  return (lessonDateTime.getTime() - now.getTime()) / (1000 * 60);
+}
