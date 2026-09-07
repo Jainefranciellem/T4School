@@ -89,6 +89,8 @@ const Students: React.FC = () => {
     queryFn: listarPlanos,
   });
 
+  const selectedPlan = plans.find((p) => p.nome === formData.plano);
+
   const handlePlanoChange = (nome: string) => {
     const plan = plans.find((p) => p.nome === nome);
     setFormData((prev) => ({
@@ -229,6 +231,11 @@ const Students: React.FC = () => {
     toast({ title: 'Link copiado!', description: 'Manda esse link pro aluno pelo WhatsApp.' });
   };
 
+  const getAulasLabel = (student: Student) => {
+    const plan = plans.find((p) => p.nome === student.plano);
+    return plan ? `${student.aulas_restantes} / ${plan.qtd_aulas}` : `${student.aulas_restantes}`;
+  };
+
   const renderStudentActions = (student: Student) => (
     <>
       <Button
@@ -338,7 +345,7 @@ const Students: React.FC = () => {
                 <p className="flex items-center gap-1">
                   <Mail className="h-3 w-3" /> {student.email}
                 </p>
-                <p>{student.aulas_restantes} aula(s) restante(s)</p>
+                <p>{getAulasLabel(student)} aula(s) restante(s)</p>
               </div>
 
               <div className="flex justify-end gap-1 pt-2 border-t border-border">
@@ -384,7 +391,7 @@ const Students: React.FC = () => {
                     <Badge variant="secondary">{student.plano}</Badge>
                   </TableCell>
                   <TableCell className="text-center">
-                    {student.aulas_restantes}
+                    {getAulasLabel(student)}
                   </TableCell>
                   <TableCell className="text-center">
                     <Badge
@@ -482,6 +489,27 @@ const Students: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="aulas_restantes">Aulas restantes</Label>
+              <Input
+                id="aulas_restantes"
+                type="number"
+                min={0}
+                value={formData.aulas_restantes}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    aulas_restantes: Math.max(0, parseInt(e.target.value) || 0),
+                  })
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                {selectedPlan
+                  ? `Já fez ${Math.max(0, selectedPlan.qtd_aulas - formData.aulas_restantes)} de ${selectedPlan.qtd_aulas} aulas do plano ${selectedPlan.nome}. Ajuste aqui se o aluno já estava em andamento.`
+                  : 'Selecione um plano ou ajuste manualmente quantas aulas ainda restam.'}
+              </p>
             </div>
 
             <DialogFooter>
