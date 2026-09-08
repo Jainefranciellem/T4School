@@ -22,6 +22,7 @@ interface LessonCardProps {
   onConfirm?: (lesson: Lesson) => void;
   onCancel?: (lesson: Lesson) => void;
   onReschedule?: (lesson: Lesson) => void;
+  onDelete?: (lesson: Lesson) => void;
   compact?: boolean;
 }
 
@@ -40,6 +41,7 @@ export const LessonCard: React.FC<LessonCardProps> = ({
   onConfirm,
   onCancel,
   onReschedule,
+  onDelete,
   compact = false,
 }) => {
   const student = propStudent;
@@ -48,6 +50,7 @@ export const LessonCard: React.FC<LessonCardProps> = ({
   // Fix: Compare only date parts using local time via date-fns
   const isPast = lesson.data < format(new Date(), 'yyyy-MM-dd');
   const canModify = !['Compareceu', 'Faltou', 'Cancelada'].includes(lesson.status);
+  const canDelete = lesson.status === 'Cancelada';
 
   if (compact) {
     return (
@@ -71,7 +74,7 @@ export const LessonCard: React.FC<LessonCardProps> = ({
               {config.label}
             </Badge>
 
-            {canModify && (
+            {(canModify || canDelete) && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                   <Button variant="ghost" size="icon" className="h-6 w-6 -mr-2">
@@ -80,23 +83,36 @@ export const LessonCard: React.FC<LessonCardProps> = ({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                  <DropdownMenuItem onClick={() => onEdit?.(lesson)}>
-                    <Edit className="mr-2 h-3 w-3" />
-                    Editar
-                  </DropdownMenuItem>
-                  {lesson.status === 'Agendada' && (
-                    <DropdownMenuItem onClick={() => onConfirm?.(lesson)}>
-                      <Check className="mr-2 h-3 w-3" />
-                      Confirmar
+                  {canModify && (
+                    <>
+                      <DropdownMenuItem onClick={() => onEdit?.(lesson)}>
+                        <Edit className="mr-2 h-3 w-3" />
+                        Editar
+                      </DropdownMenuItem>
+                      {lesson.status === 'Agendada' && (
+                        <DropdownMenuItem onClick={() => onConfirm?.(lesson)}>
+                          <Check className="mr-2 h-3 w-3" />
+                          Confirmar
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem
+                        onClick={() => onCancel?.(lesson)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-3 w-3" />
+                        Cancelar
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {canDelete && (
+                    <DropdownMenuItem
+                      onClick={() => onDelete?.(lesson)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-3 w-3" />
+                      Excluir do histórico
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem
-                    onClick={() => onCancel?.(lesson)}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="mr-2 h-3 w-3" />
-                    Cancelar
-                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -183,6 +199,20 @@ export const LessonCard: React.FC<LessonCardProps> = ({
                 >
                   <X className="w-4 h-4" />
                   Cancelar
+                </Button>
+              </div>
+            )}
+
+            {canDelete && (
+              <div className="flex items-center gap-2 pt-2 border-t border-border">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => onDelete?.(lesson)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Excluir do histórico
                 </Button>
               </div>
             )}

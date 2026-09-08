@@ -3,6 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LessonCard } from '@/components/lessons/LessonCard';
 import { CreateLessonModal } from '@/components/lessons/CreateLessonModal';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Lesson } from '@/types';
 import { cn } from '@/lib/utils';
 import {
@@ -29,6 +37,8 @@ const Agenda: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [lessonToDelete, setLessonToDelete] = useState<Lesson | null>(null);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -73,6 +83,19 @@ const Agenda: React.FC = () => {
     },
     onError: () => {
       toast({ title: 'Erro', description: 'Erro ao atualizar aula.', variant: 'destructive' });
+    }
+  });
+
+  const deleteLessonMutation = useMutation({
+    mutationFn: AulasService.deletarAula,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['aulas'] });
+      toast({ title: 'Aula excluída', description: 'A aula foi removida do histórico.' });
+      setIsDeleteModalOpen(false);
+      setLessonToDelete(null);
+    },
+    onError: () => {
+      toast({ title: 'Erro', description: 'Erro ao excluir aula.', variant: 'destructive' });
     }
   });
 
@@ -146,6 +169,17 @@ const Agenda: React.FC = () => {
         }
       }
     );
+  };
+
+  const handleDeleteLesson = (lesson: Lesson) => {
+    setLessonToDelete(lesson);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteLesson = () => {
+    if (lessonToDelete) {
+      deleteLessonMutation.mutate(lessonToDelete.id);
+    }
   };
 
   return (
@@ -287,6 +321,7 @@ const Agenda: React.FC = () => {
                         onConfirm={handleConfirmLesson}
                         onCancel={handleCancelLesson}
                         onReschedule={handleEditLesson}
+                        onDelete={handleDeleteLesson}
                       />
                     ))
                   ) : (
@@ -342,6 +377,7 @@ const Agenda: React.FC = () => {
                   onConfirm={handleConfirmLesson}
                   onCancel={handleCancelLesson}
                   onReschedule={handleEditLesson}
+                  onDelete={handleDeleteLesson}
                 />
               ))
             ) : (
@@ -384,6 +420,46 @@ const Agenda: React.FC = () => {
         onSave={handleSaveLesson}
         editLesson={selectedLesson}
       />
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir aula do histórico</DialogTitle>
+            <DialogDescription>
+              Essa aula cancelada será removida permanentemente do histórico
+              {lessonToDelete && (
+                <>
+                  {' '}(<strong>{format(new Date(`${lessonToDelete.data}T00:00:00`), "d 'de' MMM", { locale: ptBR })} às {lessonToDelete.hora}</strong>)
+                </>
+              )}. Use isso apenas quando a aula foi agendada por engano — esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteModalOpen(false)}
+              disabled={deleteLessonMutation.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteLesson}
+              disabled={deleteLessonMutation.isPending}
+            >
+              {deleteLessonMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Excluindo...
+                </>
+              ) : (
+                'Excluir'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
