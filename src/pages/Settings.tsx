@@ -6,10 +6,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { Calendar } from '@/components/ui/calendar';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getSettings, updateSettings } from '@/lib/settings.service';
+import { listBlockedDates, createBlockedDate, deleteBlockedDate } from '@/lib/blocked-dates.service';
 import { AppSettings } from '@/types';
+import { WEEKDAYS, DEFAULT_WEEKLY_SCHEDULE, lessonTypeLabel } from '@/lib/constants';
+import { format } from 'date-fns';
 import {
   MessageCircle,
   Mail,
@@ -22,6 +26,8 @@ import {
   User,
   Plus,
   X,
+  CalendarClock,
+  CalendarOff,
 } from 'lucide-react';
 
 const Settings: React.FC = () => {
@@ -35,6 +41,96 @@ const Settings: React.FC = () => {
 
   const [form, setForm] = useState<AppSettings | null>(null);
   const [newLocation, setNewLocation] = useState('');
+  const [newTimeInputs, setNewTimeInputs] = useState<Record<string, string>>({});
+  const [newBlockedDate, setNewBlockedDate] = useState<Date | undefined>();
+  const [newBlockedMotivo, setNewBlockedMotivo] = useState('');
+
+  const { data: blockedDates = [] } = useQuery({
+    queryKey: ['blocked-dates'],
+    queryFn: listBlockedDates,
+  });
+
+  const createBlockedDateMutation = useMutation({
+    mutationFn: createBlockedDate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['blocked-dates'] });
+      toast({
+        title: 'Dia fechado',
+        description: 'Alunos não vão conseguir agendar aula nessa data pelo portal.',
+      });
+      setNewBlockedDate(undefined);
+      setNewBlockedMotivo('');
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: 'Erro',
+        description: error instanceof Error ? error.message : 'Não foi possível fechar essa data.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const deleteBlockedDateMutation = useMutation({
+    mutationFn: deleteBlockedDate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['blocked-dates'] });
+      toast({ title: 'Dia reaberto', description: 'Alunos já podem agendar aula nessa data de novo.' });
+    },
+    onError: () => {
+      toast({ title: 'Erro', description: 'Não foi possível reabrir essa data.', variant: 'destructive' });
+    },
+  });
+
+  const handleBlockDate = () => {
+    if (!newBlockedDate) return;
+    createBlockedDateMutation.mutate({
+      data: format(newBlockedDate, 'yyyy-MM-dd'),
+      motivo: newBlockedMotivo.trim() || undefined,
+    });
+  };
+
+  const handleAddTime = (tipo: 'Surf' | 'SurfSkate', weekday: string) => {
+    const inputKey = `${tipo}-${weekday}`;
+    const value = (newTimeInputs[inputKey] || '').trim();
+    if (!/^\d{2}:\d{2}$/.test(value)) {
+      toast({
+        title: 'Horário inválido',
+        description: 'Use o formato HH:mm, por exemplo 07:30.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setForm((prev) => {
+      if (!prev) return prev;
+      const schedule = prev.weekly_schedule ?? {};
+      const tipoSchedule = schedule[tipo] ?? {};
+      const dayTimes = tipoSchedule[weekday] ?? [];
+      if (dayTimes.includes(value)) return prev;
+      return {
+        ...prev,
+        weekly_schedule: {
+          ...schedule,
+          [tipo]: { ...tipoSchedule, [weekday]: [...dayTimes, value].sort() },
+        },
+      };
+    });
+    setNewTimeInputs((prev) => ({ ...prev, [inputKey]: '' }));
+  };
+
+  const handleRemoveTime = (tipo: 'Surf' | 'SurfSkate', weekday: string, time: string) => {
+    setForm((prev) => {
+      if (!prev) return prev;
+      const schedule = prev.weekly_schedule ?? {};
+      const tipoSchedule = schedule[tipo] ?? {};
+      return {
+        ...prev,
+        weekly_schedule: {
+          ...schedule,
+          [tipo]: { ...tipoSchedule, [weekday]: (tipoSchedule[weekday] ?? []).filter((t) => t !== time) },
+        },
+      };
+    });
+  };
 
   const handleAddLocation = () => {
     const value = newLocation.trim();
@@ -51,7 +147,14 @@ const Settings: React.FC = () => {
   };
 
   useEffect(() => {
-    if (settings) setForm(settings);
+    if (settings) {
+      setForm({
+        ...settings,
+        // Pré-preenche com a grade real atual em vez de deixar em branco —
+        // salvar do zero um formulário vazio fecharia a escola inteira.
+        weekly_schedule: settings.weekly_schedule ?? DEFAULT_WEEKLY_SCHEDULE,
+      });
+    }
   }, [settings]);
 
   const saveMutation = useMutation({
@@ -357,6 +460,167 @@ const Settings: React.FC = () => {
               <Button type="button" variant="outline" onClick={handleAddLocation}>
                 <Plus className="h-4 w-4" />
               </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Weekly schedule */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CalendarClock className="h-5 w-5 text-primary" />
+            Minha Agenda
+          </CardTitle>
+          <CardDescription>
+            Defina os dias e horários em que você dá aula. Alunos só conseguem agendar pelo portal
+            dentro dessa grade — o que você tirar daqui deixa de aparecer pra eles.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-8">
+          {(['Surf', 'SurfSkate'] as const).map((tipo) => (
+            <div key={tipo} className="space-y-1">
+              <h4 className="text-sm font-semibold text-foreground mb-2">{lessonTypeLabel(tipo)}</h4>
+              {WEEKDAYS.map((day) => {
+                const times = form.weekly_schedule?.[tipo]?.[day.value] ?? [];
+                const inputKey = `${tipo}-${day.value}`;
+                return (
+                  <div
+                    key={day.value}
+                    className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4 border-b border-border py-3 last:border-0"
+                  >
+                    <span className="w-24 shrink-0 text-sm font-medium text-foreground pt-1.5">
+                      {day.label}
+                    </span>
+                    <div className="flex-1 space-y-2">
+                      <div className="flex flex-wrap gap-2">
+                        {times.map((time) => (
+                          <span
+                            key={time}
+                            className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-sm"
+                          >
+                            {time}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveTime(tipo, day.value, time)}
+                              className="text-muted-foreground hover:text-destructive"
+                              title="Remover horário"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        ))}
+                        {times.length === 0 && (
+                          <p className="text-sm text-muted-foreground">Sem aula nesse dia</p>
+                        )}
+                      </div>
+                      <div className="flex gap-2 max-w-[180px]">
+                        <Input
+                          placeholder="HH:mm"
+                          value={newTimeInputs[inputKey] ?? ''}
+                          onChange={(e) =>
+                            setNewTimeInputs((prev) => ({ ...prev, [inputKey]: e.target.value }))
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddTime(tipo, day.value);
+                            }
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => handleAddTime(tipo, day.value)}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Blocked dates */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CalendarOff className="h-5 w-5 text-primary" />
+            Dias Fechados
+          </CardTitle>
+          <CardDescription>
+            Bloqueie datas específicas — feriado, viagem, imprevisto. Alunos não conseguem agendar
+            aula nelas pelo portal, mesmo que o horário esteja livre na grade semanal.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Calendar
+              mode="single"
+              selected={newBlockedDate}
+              onSelect={setNewBlockedDate}
+              disabled={{ before: new Date() }}
+              className="rounded-md border w-fit"
+            />
+            <div className="flex-1 space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="blocked-motivo">Motivo (opcional)</Label>
+                <Input
+                  id="blocked-motivo"
+                  placeholder="Ex: feriado, viagem..."
+                  value={newBlockedMotivo}
+                  onChange={(e) => setNewBlockedMotivo(e.target.value)}
+                  className="max-w-sm"
+                />
+              </div>
+              <Button
+                type="button"
+                onClick={handleBlockDate}
+                disabled={!newBlockedDate || createBlockedDateMutation.isPending}
+              >
+                {createBlockedDateMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Fechando...
+                  </>
+                ) : (
+                  <>
+                    <CalendarOff className="h-4 w-4" />
+                    Fechar esse dia
+                  </>
+                )}
+              </Button>
+
+              <div className="space-y-2 pt-2">
+                <Label>Datas fechadas</Label>
+                <div className="flex flex-wrap gap-2">
+                  {blockedDates.map((bd) => (
+                    <span
+                      key={bd.id}
+                      className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-sm"
+                    >
+                      {format(new Date(`${bd.data}T00:00:00`), 'dd/MM/yyyy')}
+                      {bd.motivo && <span className="text-muted-foreground">— {bd.motivo}</span>}
+                      <button
+                        type="button"
+                        onClick={() => deleteBlockedDateMutation.mutate(bd.id)}
+                        className="text-muted-foreground hover:text-destructive"
+                        title="Reabrir esse dia"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                  {blockedDates.length === 0 && (
+                    <p className="text-sm text-muted-foreground">Nenhum dia fechado</p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </CardContent>

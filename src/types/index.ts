@@ -36,6 +36,11 @@ export interface Plan {
   preco: number;
 }
 
+// weekday como string ('0'..'6', igual Date.getDay()) -> lista de horários
+// naquele dia. Dia sem entrada = sem aula/treino nesse dia.
+export type WeeklyScheduleByType = Record<string, string[]>;
+export type WeeklySchedule = Partial<Record<'Surf' | 'SurfSkate', WeeklyScheduleByType>>;
+
 export interface AppSettings {
   id: string;
   whatsapp_phone_id?: string | null;
@@ -52,4 +57,12 @@ export interface AppSettings {
   template_rescheduled: string;
   instructor_name: string;
   locations: string[];
+  weekly_schedule?: WeeklySchedule | null;
+}
+
+export interface BlockedDate {
+  id: string;
+  data: string;
+  motivo?: string | null;
+  created_at: string;
 }

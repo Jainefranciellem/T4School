@@ -1,5 +1,17 @@
 import { z } from 'zod';
 
+const weekdayTimesSchema = z.record(
+  z.string().regex(/^[0-6]$/),
+  z.array(z.string().regex(/^\d{2}:\d{2}$/, 'Use o formato HH:mm'))
+);
+
+const weeklyScheduleSchema = z
+  .object({
+    Surf: weekdayTimesSchema.optional(),
+    SurfSkate: weekdayTimesSchema.optional(),
+  })
+  .nullable();
+
 export const updateSettingsSchema = z.object({
   // Nullable porque o form do painel sempre reenvia o objeto inteiro de
   // Settings de volta — inclusive esses campos quando ainda não foram
@@ -18,4 +30,5 @@ export const updateSettingsSchema = z.object({
   template_rescheduled: z.string().min(1).optional(),
   instructor_name: z.string().min(1).optional(),
   locations: z.array(z.string().min(1)).min(1).optional(),
+  weekly_schedule: weeklyScheduleSchema.optional(),
 });

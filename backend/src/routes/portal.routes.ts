@@ -2,7 +2,13 @@ import type { FastifyInstance } from 'fastify';
 import type { LessonStatus } from '@prisma/client';
 import { z } from 'zod';
 import { notifyProfessors } from '../lib/notify-professors.js';
-import { getScheduledTimes, minutesUntilLesson, DEFAULT_INSTRUCTOR, DEFAULT_LOCATIONS } from '../lib/schedule.js';
+import {
+  getScheduledTimes,
+  minutesUntilLesson,
+  DEFAULT_INSTRUCTOR,
+  DEFAULT_LOCATIONS,
+  type WeeklySchedule,
+} from '../lib/schedule.js';
 import { formatDateBR, lessonTypeLabel } from '../lib/format.js';
 import { lessonTypeSchema } from '../schemas/lesson.schema.js';
 
@@ -35,7 +41,15 @@ async function getBookingConfig(app: FastifyInstance) {
   return {
     instrutor: settings?.instructor_name || DEFAULT_INSTRUCTOR,
     locations: settings?.locations?.length ? settings.locations : DEFAULT_LOCATIONS,
+    weeklySchedule: (settings?.weekly_schedule as WeeklySchedule | null) ?? null,
   };
+}
+
+// O instrutor pode fechar datas específicas em Configurações (feriado,
+// viagem, etc) — enquanto isso, nenhum horário fica disponível nelas.
+async function isDateBlocked(app: FastifyInstance, data: string): Promise<boolean> {
+  const blocked = await app.prisma.blockedDate.findUnique({ where: { data } });
+  return !!blocked;
 }
 
 // Rotas públicas do portal do aluno: sem JWT, autenticadas só pelo
@@ -78,7 +92,12 @@ export async function portalRoutes(app: FastifyInstance) {
 
     const { tipo, data } = availableSlotsQuerySchema.parse(request.query);
 
-    const allTimes = getScheduledTimes(tipo, data);
+    if (await isDateBlocked(app, data)) {
+      return { data, tipo, horarios: [] };
+    }
+
+    const { weeklySchedule } = await getBookingConfig(app);
+    const allTimes = getScheduledTimes(tipo, data, weeklySchedule);
     if (allTimes.length === 0) return { data, tipo, horarios: [] };
 
     const takenLessons = await app.prisma.lesson.findMany({
@@ -101,12 +120,17 @@ export async function portalRoutes(app: FastifyInstance) {
 
     const { tipo, data, hora, local } = createPortalLessonSchema.parse(request.body);
 
-    const scheduledTimes = getScheduledTimes(tipo, data);
+    if (await isDateBlocked(app, data)) {
+      return reply.code(422).send({ message: 'A escola está fechada nessa data' });
+    }
+
+    const { instrutor, locations, weeklySchedule } = await getBookingConfig(app);
+
+    const scheduledTimes = getScheduledTimes(tipo, data, weeklySchedule);
     if (!scheduledTimes.includes(hora)) {
       return reply.code(422).send({ message: 'Esse horário não está disponível' });
     }
 
-    const { instrutor, locations } = await getBookingConfig(app);
     if (!locations.includes(local)) {
       return reply.code(422).send({ message: 'Local inválido' });
     }

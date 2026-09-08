@@ -26,6 +26,7 @@ import { Loader2, Calendar, Clock, MapPin, User, MessageCircle, Waves } from 'lu
 import { useQuery } from '@tanstack/react-query';
 import { listarAlunos } from '@/lib/students.service';
 import { getSettings } from '@/lib/settings.service';
+import { listBlockedDates } from '@/lib/blocked-dates.service';
 
 interface CreateLessonModalProps {
   isOpen: boolean;
@@ -55,8 +56,6 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
     notificar: true,
   });
 
-  const availableTimes = getAvailableTimes(formData.tipo, formData.data);
-
   // Fetch real students from the service
   const { data: students = [], isLoading: isLoadingStudents } = useQuery({
     queryKey: ['students'],
@@ -76,6 +75,24 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
   });
   const locations = settings?.locations ?? [];
   const instructors = settings?.instructor_name ? [settings.instructor_name] : [];
+
+  // Dias em que o instrutor fechou a escola (Configurações) — aparecem aqui
+  // pra o próprio painel não deixar marcar aula em cima de um dia fechado.
+  const { data: blockedDates = [] } = useQuery({
+    queryKey: ['blocked-dates'],
+    queryFn: listBlockedDates,
+    enabled: isOpen,
+    staleTime: 1000 * 60 * 5,
+  });
+  const blockedDateSet = new Set(blockedDates.map((b) => b.data));
+  const isSelectedDateBlocked = !!formData.data && blockedDateSet.has(formData.data);
+
+  const availableTimes = getAvailableTimes(
+    formData.tipo,
+    formData.data,
+    settings?.weekly_schedule,
+    blockedDateSet
+  );
 
   // Preenche local/instrutor com o padrão assim que as configurações
   // carregam, mas só numa aula nova — editar uma aula existente mantém o
@@ -129,7 +146,9 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
     setFormData((prev) => ({
       ...prev,
       tipo,
-      hora: getAvailableTimes(tipo, prev.data).includes(prev.hora) ? prev.hora : '',
+      hora: getAvailableTimes(tipo, prev.data, settings?.weekly_schedule, blockedDateSet).includes(prev.hora)
+        ? prev.hora
+        : '',
     }));
   };
 
@@ -137,7 +156,9 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
     setFormData((prev) => ({
       ...prev,
       data,
-      hora: getAvailableTimes(prev.tipo, data).includes(prev.hora) ? prev.hora : '',
+      hora: getAvailableTimes(prev.tipo, data, settings?.weekly_schedule, blockedDateSet).includes(prev.hora)
+        ? prev.hora
+        : '',
     }));
   };
 
@@ -293,6 +314,8 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
                     placeholder={
                       !formData.data
                         ? 'Selecione a data'
+                        : isSelectedDateBlocked
+                        ? 'Escola fechada nesse dia'
                         : availableTimes.length === 0
                         ? 'Sem horários nesse dia'
                         : 'Selecione o horário'
@@ -307,6 +330,11 @@ export const CreateLessonModal: React.FC<CreateLessonModalProps> = ({
                   ))}
                 </SelectContent>
               </Select>
+              {isSelectedDateBlocked && (
+                <p className="text-xs text-destructive">
+                  Você marcou esse dia como fechado em Configurações.
+                </p>
+              )}
             </div>
           </div>
 
