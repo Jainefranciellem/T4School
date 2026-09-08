@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { createStudentSchema, updateStudentSchema } from '../schemas/student.schema.js';
 import { requireAuth } from '../middleware/auth.js';
+import { notifyProfessors } from '../lib/notify-professors.js';
 
 export async function studentsRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireAuth);
@@ -19,6 +20,12 @@ export async function studentsRoutes(app: FastifyInstance) {
   app.post('/students', async (request, reply) => {
     const data = createStudentSchema.parse(request.body);
     const student = await app.prisma.student.create({ data });
+
+    await notifyProfessors(app.prisma, {
+      title: 'Novo aluno cadastrado',
+      body: `${student.nome} foi cadastrado no sistema.`,
+    }).catch((error) => app.log.error({ err: error, studentId: student.id }, 'Falha ao notificar professor sobre novo aluno'));
+
     return reply.code(201).send(student);
   });
 

@@ -1,19 +1,18 @@
 import type { FastifyInstance } from 'fastify';
-import type { Lesson, LessonStatus } from '@prisma/client';
+import type { Lesson, LessonStatus, Student } from '@prisma/client';
 import { createLessonSchema, updateLessonSchema } from '../schemas/lesson.schema.js';
 import { requireAuth } from '../middleware/auth.js';
 import { notifyStudent } from '../lib/notify-student.js';
+import { notifyProfessors } from '../lib/notify-professors.js';
+import { formatDateBR, lessonTypeLabel } from '../lib/format.js';
 
 const ACTIVE_STATUSES: LessonStatus[] = ['Agendada', 'Confirmada'];
 
-async function notifyStatusChange(app: FastifyInstance, lesson: Lesson) {
+async function notifyStatusChange(app: FastifyInstance, lesson: Lesson, student: Student) {
   if (lesson.status !== 'Confirmada' && lesson.status !== 'Cancelada') return;
 
   const settings = await app.prisma.settings.findUnique({ where: { id: 'singleton' } });
   if (!settings) return;
-
-  const student = await app.prisma.student.findUnique({ where: { id: lesson.aluno_id } });
-  if (!student) return;
 
   const template = lesson.status === 'Confirmada' ? settings.template_confirmed : settings.template_cancelled;
   const subject = lesson.status === 'Confirmada' ? 'Aula confirmada' : 'Aula cancelada';
@@ -35,12 +34,9 @@ async function notifyStatusChange(app: FastifyInstance, lesson: Lesson) {
   );
 }
 
-async function notifyReschedule(app: FastifyInstance, lesson: Lesson) {
+async function notifyReschedule(app: FastifyInstance, lesson: Lesson, student: Student) {
   const settings = await app.prisma.settings.findUnique({ where: { id: 'singleton' } });
   if (!settings) return;
-
-  const student = await app.prisma.student.findUnique({ where: { id: lesson.aluno_id } });
-  if (!student) return;
 
   await notifyStudent(
     app.prisma,
@@ -57,6 +53,31 @@ async function notifyReschedule(app: FastifyInstance, lesson: Lesson) {
     'Aula remarcada',
     app.log
   );
+}
+
+// Notificações abaixo são pro PRÓPRIO instrutor (não pro aluno) — ele pediu
+// pra ser avisado (com som, se estiver com o app aberto) quando cadastra,
+// cria ou mexe numa aula pelo painel, mesmo sendo ação dele mesmo (útil pra
+// quem usa o painel em mais de um dispositivo).
+async function notifyProfessorsLessonCreated(app: FastifyInstance, lesson: Lesson, student: Student) {
+  await notifyProfessors(app.prisma, {
+    title: 'Aula criada',
+    body: `Você agendou ${lessonTypeLabel(lesson.tipo)} com ${student.nome} em ${formatDateBR(lesson.data)} às ${lesson.hora}.`,
+  }).catch((error) => app.log.error({ err: error, lessonId: lesson.id }, 'Falha ao notificar professor sobre nova aula'));
+}
+
+async function notifyProfessorsStatusChange(app: FastifyInstance, lesson: Lesson, student: Student) {
+  await notifyProfessors(app.prisma, {
+    title: 'Status da aula atualizado',
+    body: `Aula com ${student.nome} em ${formatDateBR(lesson.data)} às ${lesson.hora} agora está "${lesson.status}".`,
+  }).catch((error) => app.log.error({ err: error, lessonId: lesson.id }, 'Falha ao notificar professor sobre status da aula'));
+}
+
+async function notifyProfessorsReschedule(app: FastifyInstance, lesson: Lesson, student: Student) {
+  await notifyProfessors(app.prisma, {
+    title: 'Aula remarcada',
+    body: `Aula com ${student.nome} remarcada para ${formatDateBR(lesson.data)} às ${lesson.hora}.`,
+  }).catch((error) => app.log.error({ err: error, lessonId: lesson.id }, 'Falha ao notificar professor sobre remarcação'));
 }
 
 export async function lessonsRoutes(app: FastifyInstance) {
@@ -114,6 +135,8 @@ export async function lessonsRoutes(app: FastifyInstance) {
       }),
     ]);
 
+    await notifyProfessorsLessonCreated(app, lesson, student);
+
     return reply.code(201).send(lesson);
   });
 
@@ -151,21 +174,24 @@ export async function lessonsRoutes(app: FastifyInstance) {
     }
 
     const lesson = await app.prisma.lesson.update({ where: { id }, data });
+    const lessonStudent = await app.prisma.student.findUnique({ where: { id: lesson.aluno_id } });
 
-    if (data.status && data.status !== exists.status) {
-      await notifyStatusChange(app, lesson).catch((error) => {
+    if (data.status && data.status !== exists.status && lessonStudent) {
+      await notifyStatusChange(app, lesson, lessonStudent).catch((error) => {
         app.log.error({ err: error, lessonId: lesson.id }, 'Falha ao enviar notificação de status');
       });
+      await notifyProfessorsStatusChange(app, lesson, lessonStudent);
     }
 
     const rescheduled =
       (data.data !== undefined && data.data !== exists.data) ||
       (data.hora !== undefined && data.hora !== exists.hora);
 
-    if (rescheduled) {
-      await notifyReschedule(app, lesson).catch((error) => {
+    if (rescheduled && lessonStudent) {
+      await notifyReschedule(app, lesson, lessonStudent).catch((error) => {
         app.log.error({ err: error, lessonId: lesson.id }, 'Falha ao enviar notificação de remarcação');
       });
+      await notifyProfessorsReschedule(app, lesson, lessonStudent);
     }
 
     return lesson;
