@@ -209,7 +209,15 @@ export async function portalRoutes(app: FastifyInstance) {
         .send({ message: `Só é possível cancelar até ${CANCEL_LOCK_MINUTES} minutos antes do início da aula` });
     }
 
-    const updated = await app.prisma.lesson.update({ where: { id }, data: { status: 'Cancelada' } });
+    // Cancelar devolve o crédito consumido quando a aula foi marcada — só
+    // falta (status Faltou) continua descontando do pacote.
+    const [updated] = await app.prisma.$transaction([
+      app.prisma.lesson.update({ where: { id }, data: { status: 'Cancelada' } }),
+      app.prisma.student.update({
+        where: { id: student.id },
+        data: { aulas_restantes: { increment: 1 } },
+      }),
+    ]);
 
     await notifyProfessors(app.prisma, {
       title: 'Aluno cancelou aula',

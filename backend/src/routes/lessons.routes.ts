@@ -173,7 +173,28 @@ export async function lessonsRoutes(app: FastifyInstance) {
       }
     }
 
-    const lesson = await app.prisma.lesson.update({ where: { id }, data });
+    // Cancelar devolve o crédito consumido quando a aula foi marcada;
+    // reativar uma aula cancelada (editar o status de volta) consome de novo
+    // — mantém o saldo do aluno coerente com o que está reservado de fato.
+    // Só falta (status Faltou) continua descontando do pacote.
+    const enteringCancelled = data.status === 'Cancelada' && exists.status !== 'Cancelada';
+    const leavingCancelled = data.status !== undefined && data.status !== 'Cancelada' && exists.status === 'Cancelada';
+
+    let lesson: Lesson;
+    if (enteringCancelled) {
+      [lesson] = await app.prisma.$transaction([
+        app.prisma.lesson.update({ where: { id }, data }),
+        app.prisma.student.update({ where: { id: exists.aluno_id }, data: { aulas_restantes: { increment: 1 } } }),
+      ]);
+    } else if (leavingCancelled) {
+      [lesson] = await app.prisma.$transaction([
+        app.prisma.lesson.update({ where: { id }, data }),
+        app.prisma.student.update({ where: { id: exists.aluno_id }, data: { aulas_restantes: { decrement: 1 } } }),
+      ]);
+    } else {
+      lesson = await app.prisma.lesson.update({ where: { id }, data });
+    }
+
     const lessonStudent = await app.prisma.student.findUnique({ where: { id: lesson.aluno_id } });
 
     if (data.status && data.status !== exists.status && lessonStudent) {
