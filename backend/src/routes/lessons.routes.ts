@@ -1,8 +1,10 @@
 import type { FastifyInstance } from 'fastify';
-import type { Lesson } from '@prisma/client';
+import type { Lesson, LessonStatus } from '@prisma/client';
 import { createLessonSchema, updateLessonSchema } from '../schemas/lesson.schema.js';
 import { requireAuth } from '../middleware/auth.js';
 import { notifyStudent } from '../lib/notify-student.js';
+
+const ACTIVE_STATUSES: LessonStatus[] = ['Agendada', 'Confirmada'];
 
 async function notifyStatusChange(app: FastifyInstance, lesson: Lesson) {
   if (lesson.status !== 'Confirmada' && lesson.status !== 'Cancelada') return;
@@ -92,6 +94,18 @@ export async function lessonsRoutes(app: FastifyInstance) {
     const student = await app.prisma.student.findUnique({ where: { id: data.aluno_id } });
     if (!student) return reply.code(422).send({ message: 'Aluno informado não existe' });
 
+    const conflict = await app.prisma.lesson.findFirst({
+      where: {
+        instrutor: data.instrutor,
+        data: data.data,
+        hora: data.hora,
+        status: { in: ACTIVE_STATUSES },
+      },
+    });
+    if (conflict) {
+      return reply.code(409).send({ message: 'Já existe uma aula agendada para esse instrutor nesse dia e horário' });
+    }
+
     const [lesson] = await app.prisma.$transaction([
       app.prisma.lesson.create({ data }),
       app.prisma.student.update({
@@ -109,6 +123,32 @@ export async function lessonsRoutes(app: FastifyInstance) {
 
     const exists = await app.prisma.lesson.findUnique({ where: { id } });
     if (!exists) return reply.code(404).send({ message: 'Aula não encontrada' });
+
+    const instrutor = data.instrutor ?? exists.instrutor;
+    const lessonData = data.data ?? exists.data;
+    const hora = data.hora ?? exists.hora;
+    const status = data.status ?? exists.status;
+
+    const movedOrReactivated =
+      instrutor !== exists.instrutor ||
+      lessonData !== exists.data ||
+      hora !== exists.hora ||
+      status !== exists.status;
+
+    if (movedOrReactivated && ACTIVE_STATUSES.includes(status)) {
+      const conflict = await app.prisma.lesson.findFirst({
+        where: {
+          id: { not: id },
+          instrutor,
+          data: lessonData,
+          hora,
+          status: { in: ACTIVE_STATUSES },
+        },
+      });
+      if (conflict) {
+        return reply.code(409).send({ message: 'Já existe uma aula agendada para esse instrutor nesse dia e horário' });
+      }
+    }
 
     const lesson = await app.prisma.lesson.update({ where: { id }, data });
 
