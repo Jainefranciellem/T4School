@@ -31,6 +31,7 @@ const createPortalLessonSchema = z.object({
 
 const ACTIVE_STATUSES: LessonStatus[] = ['Agendada', 'Confirmada'];
 const CANCEL_LOCK_MINUTES = 15;
+const MIN_BOOKING_ADVANCE_MINUTES = 12 * 60;
 
 // Instrutor e locais são editáveis pelo professor em Configurações — os
 // valores em schedule.ts só entram como fallback se o singleton de Settings
@@ -106,7 +107,14 @@ export async function portalRoutes(app: FastifyInstance) {
     });
     const taken = new Set(takenLessons.map((l) => l.hora));
 
-    return { data, tipo, horarios: allTimes.filter((hora) => !taken.has(hora)) };
+    // Não oferece horário que o aluno nem conseguiria confirmar em seguida
+    // (POST rejeitaria por falta de antecedência) — evita ele escolher e
+    // só descobrir o problema depois de clicar em agendar.
+    const horarios = allTimes.filter(
+      (hora) => !taken.has(hora) && minutesUntilLesson(data, hora) >= MIN_BOOKING_ADVANCE_MINUTES
+    );
+
+    return { data, tipo, horarios };
   });
 
   app.post('/portal/:token/lessons', async (request, reply) => {
@@ -129,6 +137,12 @@ export async function portalRoutes(app: FastifyInstance) {
     const scheduledTimes = getScheduledTimes(tipo, data, weeklySchedule);
     if (!scheduledTimes.includes(hora)) {
       return reply.code(422).send({ message: 'Esse horário não está disponível' });
+    }
+
+    if (minutesUntilLesson(data, hora) < MIN_BOOKING_ADVANCE_MINUTES) {
+      return reply.code(422).send({
+        message: 'Só é possível agendar com pelo menos 12 horas de antecedência',
+      });
     }
 
     if (!locations.includes(local)) {
