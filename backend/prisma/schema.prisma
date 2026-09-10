@@ -94,8 +94,11 @@ model DeviceToken {
   user_id    String
   user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   token      String   @unique
+  client_id  String?
   platform   String
   created_at DateTime @default(now())
+
+  @@index([client_id])
 }
 
 model StudentDeviceToken {

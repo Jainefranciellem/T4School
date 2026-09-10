@@ -14,6 +14,8 @@ import { listBlockedDates, createBlockedDate, deleteBlockedDate } from '@/lib/bl
 import { AppSettings } from '@/types';
 import { WEEKDAYS, DEFAULT_WEEKLY_SCHEDULE, lessonTypeLabel } from '@/lib/constants';
 import { format } from 'date-fns';
+import { pedirPermissaoNotificacaoPush } from '@/lib/firebase';
+import { salvarDispositivoProfessor } from '@/lib/professor.service';
 import {
   MessageCircle,
   Mail,
@@ -28,6 +30,7 @@ import {
   X,
   CalendarClock,
   CalendarOff,
+  Smartphone,
 } from 'lucide-react';
 
 const Settings: React.FC = () => {
@@ -44,6 +47,35 @@ const Settings: React.FC = () => {
   const [newTimeInputs, setNewTimeInputs] = useState<Record<string, string>>({});
   const [newBlockedDate, setNewBlockedDate] = useState<Date | undefined>();
   const [newBlockedMotivo, setNewBlockedMotivo] = useState('');
+  const [activatingPush, setActivatingPush] = useState(false);
+
+  const handleActivatePush = async () => {
+    setActivatingPush(true);
+    try {
+      const token = await pedirPermissaoNotificacaoPush();
+      if (!token) {
+        toast({
+          title: 'Permissão não concedida',
+          description: 'Permita notificações no navegador/celular pra receber os avisos aqui.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      await salvarDispositivoProfessor(token);
+      toast({
+        title: 'Notificações ativadas!',
+        description: 'Esse aparelho vai receber os avisos do sistema a partir de agora.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Não foi possível ativar',
+        description: error instanceof Error ? error.message : 'Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setActivatingPush(false);
+    }
+  };
 
   const { data: blockedDates = [] } = useQuery({
     queryKey: ['blocked-dates'],
@@ -392,6 +424,36 @@ const Settings: React.FC = () => {
               )}
             </>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Push notifications for this device */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Smartphone className="h-5 w-5 text-primary" />
+            Notificações neste aparelho
+          </CardTitle>
+          <CardDescription>
+            Como o login é compartilhado, cada pessoa precisa ativar as notificações no próprio
+            celular/navegador. Se você parou de receber avisos, troque de aparelho, ou nunca ativou,
+            clique abaixo neste dispositivo.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button type="button" onClick={handleActivatePush} disabled={activatingPush}>
+            {activatingPush ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Ativando...
+              </>
+            ) : (
+              <>
+                <Smartphone className="h-4 w-4" />
+                Ativar notificações neste aparelho
+              </>
+            )}
+          </Button>
         </CardContent>
       </Card>
 
