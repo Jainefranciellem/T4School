@@ -6,6 +6,10 @@
 export const DEFAULT_INSTRUCTOR = 'Torquato';
 export const DEFAULT_LOCATIONS = ['Cinelandia', 'Bomba', 'Cara de Sapo', 'Sementeira'];
 
+// Janela em que o aluno ainda pode cancelar a aula pelo portal — também usada
+// pelo job que trava a aula em Implementada assim que essa janela fecha.
+export const CANCEL_LOCK_MINUTES = 15;
+
 // weekday como string ('0'..'6', igual Date.getDay()) -> lista de horários
 // naquele dia. Dia sem entrada = sem aula/treino nesse dia.
 export type WeeklyScheduleByType = Record<string, string[]>;

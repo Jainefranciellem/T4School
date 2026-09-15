@@ -173,7 +173,7 @@ export const LessonCard: React.FC<LessonCardProps> = ({
               </p>
             )}
 
-            {canModify && !isPast && (
+            {canModify && (!isPast || lesson.status === 'Implementada') && (
               <div className="flex items-center gap-2 pt-2 border-t border-border">
                 {(lesson.status === 'Agendada' || lesson.status === 'Implementada') && (
                   <Button

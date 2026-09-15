@@ -1,18 +1,24 @@
 import { LessonStatus, type PrismaClient } from '@prisma/client';
 import type { FastifyBaseLogger } from 'fastify';
-import { minutesUntilLesson } from '../lib/schedule.js';
+import { minutesUntilLesson, CANCEL_LOCK_MINUTES } from '../lib/schedule.js';
 
 const LOCKABLE_STATUSES: LessonStatus[] = [LessonStatus.Agendada, LessonStatus.Confirmada];
-const CANCEL_LOCK_MINUTES = 15;
+
+// Aula esquecida em Agendada/Confirmada há mais de um dia não é "acabou de
+// passar da janela de cancelamento" — é lixo de dados que o professor
+// deveria ter resolvido manualmente (Compareceu/Faltou). Sem esse teto, a
+// primeira rodada do job varreria todo o histórico esquecido pra
+// Implementada de uma vez só.
+const MAX_PAST_MINUTES = 24 * 60;
 
 export interface LockLessonsJobResult {
   locked: number;
 }
 
-// Espelha o CANCEL_LOCK_MINUTES de portal.routes.ts: a partir do momento em
-// que o aluno não pode mais cancelar, a aula não deve mais ficar pendurada
-// em Agendada/Confirmada esperando confirmação dele — vira Implementada, e
-// dali em diante só o professor confirma (Implementada -> Confirmada).
+// A partir do momento em que o aluno não pode mais cancelar (CANCEL_LOCK_MINUTES
+// antes do início), a aula não deve mais ficar pendurada em Agendada/Confirmada
+// esperando confirmação dele — vira Implementada, e dali em diante só o
+// professor confirma (Implementada -> Confirmada).
 export async function runLockLessonsJob(
   prisma: PrismaClient,
   logger: FastifyBaseLogger
@@ -24,7 +30,10 @@ export async function runLockLessonsJob(
   });
 
   const toLockIds = candidates
-    .filter((lesson) => minutesUntilLesson(lesson.data, lesson.hora, now) < CANCEL_LOCK_MINUTES)
+    .filter((lesson) => {
+      const remaining = minutesUntilLesson(lesson.data, lesson.hora, now);
+      return remaining < CANCEL_LOCK_MINUTES && remaining >= -MAX_PAST_MINUTES;
+    })
     .map((lesson) => lesson.id);
 
   if (toLockIds.length === 0) return { locked: 0 };

@@ -7,6 +7,7 @@ import {
   minutesUntilLesson,
   DEFAULT_INSTRUCTOR,
   DEFAULT_LOCATIONS,
+  CANCEL_LOCK_MINUTES,
   type WeeklySchedule,
 } from '../lib/schedule.js';
 import { formatDateBR, lessonTypeLabel } from '../lib/format.js';
@@ -30,7 +31,6 @@ const createPortalLessonSchema = z.object({
 });
 
 const ACTIVE_STATUSES: LessonStatus[] = ['Agendada', 'Confirmada', 'Implementada'];
-const CANCEL_LOCK_MINUTES = 15;
 const MIN_BOOKING_ADVANCE_MINUTES = 12 * 60;
 
 // Instrutor e locais são editáveis pelo professor em Configurações — os
