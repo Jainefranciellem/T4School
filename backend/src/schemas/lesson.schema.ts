@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const lessonStatusSchema = z.enum([
   'Agendada',
   'Confirmada',
+  'Implementada',
   'Compareceu',
   'Faltou',
   'Cancelada',

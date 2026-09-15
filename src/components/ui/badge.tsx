@@ -17,6 +17,7 @@ const badgeVariants = cva(
         info: "border-transparent bg-secondary/15 text-secondary border-secondary/20",
         scheduled: "border-transparent bg-secondary/15 text-secondary border-secondary/20",
         confirmed: "border-transparent bg-success/15 text-success border-success/20",
+        implemented: "border-transparent bg-warning/15 text-warning border-warning/20",
         attended: "border-transparent bg-primary/15 text-primary border-primary/20",
         missed: "border-transparent bg-destructive/15 text-destructive border-destructive/20",
         cancelled: "border-transparent bg-muted text-muted-foreground border-muted",

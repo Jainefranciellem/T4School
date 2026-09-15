@@ -18,7 +18,7 @@ export interface Lesson {
   local: string;
   instrutor: string;
   tipo?: 'Surf' | 'SurfSkate';
-  status: 'Agendada' | 'Confirmada' | 'Compareceu' | 'Faltou' | 'Cancelada';
+  status: 'Agendada' | 'Confirmada' | 'Implementada' | 'Compareceu' | 'Faltou' | 'Cancelada';
   observacoes?: string;
   notificacao_enviada?: boolean;
   enviar_notificacao?: boolean;

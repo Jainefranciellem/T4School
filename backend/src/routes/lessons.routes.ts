@@ -6,7 +6,7 @@ import { notifyStudent } from '../lib/notify-student.js';
 import { notifyProfessors } from '../lib/notify-professors.js';
 import { formatDateBR, lessonTypeLabel } from '../lib/format.js';
 
-const ACTIVE_STATUSES: LessonStatus[] = ['Agendada', 'Confirmada'];
+const ACTIVE_STATUSES: LessonStatus[] = ['Agendada', 'Confirmada', 'Implementada'];
 
 async function notifyStatusChange(app: FastifyInstance, lesson: Lesson, student: Student) {
   if (lesson.status !== 'Confirmada' && lesson.status !== 'Cancelada') return;

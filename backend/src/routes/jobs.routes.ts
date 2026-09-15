@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { env } from '../env.js';
 import { runReminderJob } from '../jobs/reminders.job.js';
+import { runLockLessonsJob } from '../jobs/lock-lessons.job.js';
 
 function isAuthorized(request: FastifyRequest): boolean {
   const internalSecret = request.headers['x-internal-secret'];
@@ -21,8 +22,15 @@ async function handleReminderJob(app: FastifyInstance, request: FastifyRequest, 
     return reply.code(401).send({ message: 'Não autorizado' });
   }
 
-  const result = await runReminderJob(app.prisma, app.log);
-  return result;
+  // Roda junto do job de lembretes: ambos precisam do mesmo cron de alta
+  // frequência (a cada ~15min) pra pegar a janela de bloqueio de cancelamento
+  // a tempo, e não faz sentido manter dois crons externos separados por isso.
+  const [reminders, locked] = await Promise.all([
+    runReminderJob(app.prisma, app.log),
+    runLockLessonsJob(app.prisma, app.log),
+  ]);
+
+  return { ...reminders, ...locked };
 }
 
 export async function jobsRoutes(app: FastifyInstance) {

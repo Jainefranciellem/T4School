@@ -17,7 +17,6 @@ import { useToast } from '@/hooks/use-toast';
 import {
   getPortalStudent,
   getPortalLessons,
-  confirmPortalLesson,
   cancelPortalLesson,
   registerPortalDeviceToken,
   getPortalAvailableSlots,
@@ -26,7 +25,7 @@ import {
 } from '@/lib/portal.service';
 import { pedirPermissaoNotificacaoPush } from '@/lib/firebase';
 import { lessonTypeLabel, lessonTypes } from '@/lib/constants';
-import { Loader2, Waves, MapPin, User, Bell, Check, X, Calendar, CalendarPlus } from 'lucide-react';
+import { Loader2, Waves, MapPin, User, Bell, X, Calendar, CalendarPlus } from 'lucide-react';
 import { format, differenceInMinutes } from 'date-fns';
 import type { Lesson } from '@/types';
 
@@ -40,6 +39,7 @@ function isCancelLocked(lesson: Lesson): boolean {
 const statusConfig = {
   Agendada: { variant: 'scheduled' as const, label: 'Agendada' },
   Confirmada: { variant: 'confirmed' as const, label: 'Confirmada' },
+  Implementada: { variant: 'implemented' as const, label: 'Aguardando confirmação' },
   Compareceu: { variant: 'attended' as const, label: 'Compareceu' },
   Faltou: { variant: 'missed' as const, label: 'Faltou' },
   Cancelada: { variant: 'cancelled' as const, label: 'Cancelada' },
@@ -95,17 +95,6 @@ const Portal: React.FC = () => {
       setBookingLocal(portalConfig.locations[0]);
     }
   }, [portalConfig, bookingLocal]);
-
-  const confirmMutation = useMutation({
-    mutationFn: (lessonId: string) => confirmPortalLesson(token!, lessonId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['portal-lessons', token] });
-      toast({ title: 'Presença confirmada!' });
-    },
-    onError: (error: Error) => {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
-    },
-  });
 
   const cancelMutation = useMutation({
     mutationFn: (lessonId: string) => cancelPortalLesson(token!, lessonId),
@@ -382,16 +371,8 @@ const Portal: React.FC = () => {
                   <User className="h-3.5 w-3.5" /> {lesson.instrutor}
                 </p>
 
-                {lesson.status === 'Agendada' && (
+                {(lesson.status === 'Agendada' || lesson.status === 'Confirmada') && (
                   <div className="flex items-center gap-2 pt-2 border-t border-border">
-                    <Button
-                      size="sm"
-                      variant="success"
-                      disabled={confirmMutation.isPending}
-                      onClick={() => confirmMutation.mutate(lesson.id)}
-                    >
-                      <Check className="h-4 w-4" /> Confirmar
-                    </Button>
                     {!isCancelLocked(lesson) ? (
                       <Button
                         size="sm"
@@ -410,23 +391,11 @@ const Portal: React.FC = () => {
                   </div>
                 )}
 
-                {lesson.status === 'Confirmada' && (
-                  <div className="flex items-center gap-2 pt-2 border-t border-border">
-                    {!isCancelLocked(lesson) ? (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        disabled={cancelMutation.isPending}
-                        onClick={() => cancelMutation.mutate(lesson.id)}
-                      >
-                        <X className="h-4 w-4" /> Cancelar
-                      </Button>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        Não é mais possível cancelar (menos de {CANCEL_LOCK_MINUTES} min pro início)
-                      </p>
-                    )}
+                {lesson.status === 'Implementada' && (
+                  <div className="pt-2 border-t border-border">
+                    <p className="text-xs text-muted-foreground">
+                      Aguardando confirmação do professor. Você já receberá um e-mail assim que ele confirmar.
+                    </p>
                   </div>
                 )}
               </CardContent>

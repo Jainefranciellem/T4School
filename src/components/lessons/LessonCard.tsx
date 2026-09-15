@@ -29,6 +29,7 @@ interface LessonCardProps {
 const statusConfig = {
   Agendada: { variant: 'scheduled' as const, label: 'Agendada' },
   Confirmada: { variant: 'confirmed' as const, label: 'Confirmada' },
+  Implementada: { variant: 'implemented' as const, label: 'Aguardando confirmação' },
   Compareceu: { variant: 'attended' as const, label: 'Compareceu' },
   Faltou: { variant: 'missed' as const, label: 'Faltou' },
   Cancelada: { variant: 'cancelled' as const, label: 'Cancelada' },
@@ -58,7 +59,8 @@ export const LessonCard: React.FC<LessonCardProps> = ({
         className={cn(
           'p-3 rounded-lg border bg-card hover:shadow-md transition-all duration-200 cursor-pointer',
           lesson.status === 'Confirmada' && 'border-l-4 border-l-success',
-          lesson.status === 'Agendada' && 'border-l-4 border-l-secondary'
+          lesson.status === 'Agendada' && 'border-l-4 border-l-secondary',
+          lesson.status === 'Implementada' && 'border-l-4 border-l-warning'
         )}
         onClick={() => onEdit?.(lesson)}
       >
@@ -89,7 +91,7 @@ export const LessonCard: React.FC<LessonCardProps> = ({
                         <Edit className="mr-2 h-3 w-3" />
                         Editar
                       </DropdownMenuItem>
-                      {lesson.status === 'Agendada' && (
+                      {(lesson.status === 'Agendada' || lesson.status === 'Implementada') && (
                         <DropdownMenuItem onClick={() => onConfirm?.(lesson)}>
                           <Check className="mr-2 h-3 w-3" />
                           Confirmar
@@ -173,7 +175,7 @@ export const LessonCard: React.FC<LessonCardProps> = ({
 
             {canModify && !isPast && (
               <div className="flex items-center gap-2 pt-2 border-t border-border">
-                {lesson.status === 'Agendada' && (
+                {(lesson.status === 'Agendada' || lesson.status === 'Implementada') && (
                   <Button
                     variant="success"
                     size="sm"

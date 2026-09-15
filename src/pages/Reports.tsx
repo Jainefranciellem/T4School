@@ -81,7 +81,7 @@ const Reports: React.FC = () => {
     attended: filteredLessons.filter((l) => l.status === 'Compareceu').length,
     missed: filteredLessons.filter((l) => l.status === 'Faltou').length,
     cancelled: filteredLessons.filter((l) => l.status === 'Cancelada').length,
-    scheduled: filteredLessons.filter((l) => ['Agendada', 'Confirmada'].includes(l.status)).length,
+    scheduled: filteredLessons.filter((l) => ['Agendada', 'Confirmada', 'Implementada'].includes(l.status)).length,
   };
 
   const attendanceRate = stats.total > 0

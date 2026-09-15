@@ -33,10 +33,6 @@ export function getPortalLessons(token: string): Promise<Lesson[]> {
   return portalFetch(`/portal/${token}/lessons`);
 }
 
-export function confirmPortalLesson(token: string, lessonId: string): Promise<Lesson> {
-  return portalFetch(`/portal/${token}/lessons/${lessonId}/confirm`, { method: 'PUT' });
-}
-
 export function cancelPortalLesson(token: string, lessonId: string): Promise<Lesson> {
   return portalFetch(`/portal/${token}/lessons/${lessonId}/cancel`, { method: 'PUT' });
 }

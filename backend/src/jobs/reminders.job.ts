@@ -4,7 +4,11 @@ import { notifyStudent } from '../lib/notify-student.js';
 import { notifyProfessors } from '../lib/notify-professors.js';
 import { minutesUntilLesson } from '../lib/schedule.js';
 
-const ACTIVE_STATUSES: LessonStatus[] = [LessonStatus.Agendada, LessonStatus.Confirmada];
+const ACTIVE_STATUSES: LessonStatus[] = [
+  LessonStatus.Agendada,
+  LessonStatus.Confirmada,
+  LessonStatus.Implementada,
+];
 
 export interface ReminderJobResult {
   sent: number;

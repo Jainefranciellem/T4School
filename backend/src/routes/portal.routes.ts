@@ -29,7 +29,7 @@ const createPortalLessonSchema = z.object({
   local: z.string().min(1),
 });
 
-const ACTIVE_STATUSES: LessonStatus[] = ['Agendada', 'Confirmada'];
+const ACTIVE_STATUSES: LessonStatus[] = ['Agendada', 'Confirmada', 'Implementada'];
 const CANCEL_LOCK_MINUTES = 15;
 const MIN_BOOKING_ADVANCE_MINUTES = 12 * 60;
 
@@ -182,29 +182,8 @@ export async function portalRoutes(app: FastifyInstance) {
     return reply.code(201).send(lesson);
   });
 
-  app.put('/portal/:token/lessons/:id/confirm', async (request, reply) => {
-    const { token, id } = request.params as { token: string; id: string };
-    const student = await app.prisma.student.findUnique({ where: { access_token: token } });
-    if (!student) return reply.code(404).send({ message: 'Link inválido' });
-
-    const lesson = await app.prisma.lesson.findUnique({ where: { id } });
-    if (!lesson || lesson.aluno_id !== student.id) {
-      return reply.code(404).send({ message: 'Aula não encontrada' });
-    }
-    if (lesson.status !== 'Agendada') {
-      return reply.code(422).send({ message: 'Essa aula não pode mais ser confirmada' });
-    }
-
-    const updated = await app.prisma.lesson.update({ where: { id }, data: { status: 'Confirmada' } });
-
-    await notifyProfessors(app.prisma, {
-      title: 'Aluno confirmou presença',
-      body: `${student.nome} confirmou ${lessonTypeLabel(lesson.tipo)} em ${formatDateBR(lesson.data)} às ${lesson.hora}.`,
-    }).catch((error) => app.log.error({ err: error }, 'Falha ao notificar professor'));
-
-    return updated;
-  });
-
+  // Confirmar aula é ação exclusiva do professor agora (painel dele) — o
+  // aluno só agenda e cancela; não existe mais /confirm no portal.
   app.put('/portal/:token/lessons/:id/cancel', async (request, reply) => {
     const { token, id } = request.params as { token: string; id: string };
     const student = await app.prisma.student.findUnique({ where: { access_token: token } });
