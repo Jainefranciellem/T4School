@@ -163,6 +163,14 @@ const Financeiro: React.FC = () => {
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['finance'] });
+  const markPaidMutation = useMutation({
+    mutationFn: (tx: FinancialTransaction) => FinanceService.atualizar(tx.id, { status: 'Pago' }),
+    onSuccess: (tx) => {
+      invalidate();
+      toast({ title: tx.tipo === 'Receita' ? 'Marcado como recebido' : 'Marcado como pago' });
+    },
+    onError: (error: Error) => toast({ title: 'Erro ao atualizar lançamento', description: error.message, variant: 'destructive' }),
+  });
   const onError = (title: string) => (error: Error) =>
     toast({ title, description: error.message, variant: 'destructive' });
 
@@ -245,7 +253,12 @@ const Financeiro: React.FC = () => {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
-          <TransactionList items={items ?? []} onEdit={(tx) => openForm(tx.tipo, tx)} onDelete={setToDelete} />
+          <TransactionList
+            items={items ?? []}
+            onEdit={(tx) => openForm(tx.tipo, tx)}
+            onDelete={setToDelete}
+            onMarkPaid={(tx) => markPaidMutation.mutate(tx)}
+          />
         )}
       </div>
     );
@@ -454,6 +467,25 @@ const Financeiro: React.FC = () => {
                 />
               </div>
 
+              {(a.estimativa_planos.qtd > 0 || a.estimativa_planos.sem_preco > 0) && (
+                <Card className="border-dashed">
+                  <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Estimativa pelos planos adquiridos</p>
+                      <p className="text-2xl font-bold font-display">{formatBRL(a.estimativa_planos.valor)}</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground sm:max-w-md">
+                      {a.estimativa_planos.qtd} aluno{a.estimativa_planos.qtd === 1 ? '' : 's'} cadastrado
+                      {a.estimativa_planos.qtd === 1 ? '' : 's'} no mês sem receita de plano lançada, pelo preço atual do plano.
+                      É uma estimativa (não entra em recebida nem em resultado); renovações e trocas antigas não são
+                      registradas.
+                      {a.estimativa_planos.sem_preco > 0 &&
+                        ` ${a.estimativa_planos.sem_preco} aluno(s) ficaram de fora porque o plano não existe mais.`}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                 <Distribution title="Receita por plano" items={summary.distribuicao.receita_por_plano} />
                 <Distribution title="Receita por categoria" items={summary.distribuicao.receita_por_categoria} />
@@ -556,6 +588,9 @@ const Financeiro: React.FC = () => {
                     <TableHead className="text-right">Receita</TableHead>
                     <TableHead className="text-right">Despesas</TableHead>
                     <TableHead className="text-right">Resultado</TableHead>
+                    <TableHead className="text-right" title="Estimativa pelos planos de alunos cadastrados no mês, sem receita lançada">
+                      Est. planos
+                    </TableHead>
                     <TableHead className="text-center">Novos</TableHead>
                     <TableHead className="text-center">Cancel.</TableHead>
                     <TableHead className="text-center">Ativos</TableHead>
@@ -576,6 +611,9 @@ const Financeiro: React.FC = () => {
                         className={`text-right whitespace-nowrap font-semibold ${row.resultado < 0 ? 'text-destructive' : ''}`}
                       >
                         {formatBRL(row.resultado)}
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap text-muted-foreground">
+                        {row.receita_estimada_planos > 0 ? `~ ${formatBRL(row.receita_estimada_planos)}` : '—'}
                       </TableCell>
                       <TableCell className="text-center">{row.novos}</TableCell>
                       <TableCell className="text-center">{row.cancelados}</TableCell>
