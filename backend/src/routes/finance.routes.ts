@@ -17,6 +17,8 @@ import {
   monthRange,
   pctChange,
   planCountsFor,
+  planEstimateFor,
+  type PlanEstimate,
   toCents,
   todayBR,
   totalsFor,
@@ -63,7 +65,7 @@ export async function financeRoutes(app: FastifyInstance) {
 
   // Métricas por mês (uma query de lançamentos + uma de alunos pra todo o intervalo).
   async function loadMonths(months: string[], filters: Filters, today: string) {
-    const [txs, students, plan] = await Promise.all([
+    const [txs, students, plan, allPlans, realRevenue] = await Promise.all([
       app.prisma.financialTransaction.findMany({
         where: { ...txWhere(filters), competencia: { gte: months[0], lte: months[months.length - 1] } },
       }),
@@ -72,7 +74,18 @@ export async function financeRoutes(app: FastifyInstance) {
         select: { id: true, plano: true, status: true, created_at: true, updated_at: true, inativado_em: true },
       }),
       filters.plano_id ? app.prisma.plan.findUnique({ where: { id: filters.plano_id } }) : null,
+      app.prisma.plan.findMany({ select: { nome: true, preco: true } }),
+      // Alunos que já têm receita de plano lançada (qualquer mês) — saem da estimativa.
+      app.prisma.financialTransaction.findMany({
+        where: { tipo: 'Receita', categoria: 'Plano', status: { not: 'Cancelado' }, aluno_id: { not: null } },
+        select: { aluno_id: true },
+      }),
     ]);
+    const priceByPlanName = new Map(allPlans.map((p) => [p.nome, Number(p.preco)]));
+    const withRealRevenue = new Set(realRevenue.map((r) => r.aluno_id as string));
+    // O filtro de categoria vale pra estimativa: ela só representa receita de "Plano".
+    const estimateApplies = !filters.categoria || filters.categoria === 'Plano';
+    const emptyEstimate: PlanEstimate = { valor: 0, qtd: 0, sem_preco: 0 };
 
     // Student.plano guarda o NOME do plano, não o id.
     const scopedStudents = plan ? students.filter((s) => s.plano === plan.nome) : students;
@@ -91,6 +104,9 @@ export async function financeRoutes(app: FastifyInstance) {
         mes,
         totals: totalsFor(byMonth.get(mes) ?? [], today),
         plans: planCountsFor(scopedStudents, mes),
+        estimate: estimateApplies
+          ? planEstimateFor(scopedStudents, priceByPlanName, withRealRevenue, mes)
+          : emptyEstimate,
       })),
     };
   }
@@ -142,8 +158,13 @@ export async function financeRoutes(app: FastifyInstance) {
     return {
       mes,
       mes_anterior: anterior,
-      atual: { ...curr.totals, planos: curr.plans, clientes: { inadimplentes: inadimplentes.size } },
-      anterior: { ...prev.totals, planos: prev.plans },
+      atual: {
+        ...curr.totals,
+        planos: curr.plans,
+        estimativa_planos: curr.estimate,
+        clientes: { inadimplentes: inadimplentes.size },
+      },
+      anterior: { ...prev.totals, planos: prev.plans, estimativa_planos: prev.estimate },
       variacao: variations(curr, prev),
       distribuicao: {
         receita_por_categoria: sumBy('Receita', (tx) => tx.categoria),
@@ -161,13 +182,14 @@ export async function financeRoutes(app: FastifyInstance) {
     const months = monthRange(ate, query.meses);
 
     const { rows } = await loadMonths(months, query, today);
-    return rows.map(({ mes, totals, plans }) => ({
+    return rows.map(({ mes, totals, plans, estimate }) => ({
       mes,
       receita_prevista: totals.receita_prevista,
       receita_recebida: totals.receita_recebida,
       receita_pendente: totals.receita_pendente,
       despesas_total: totals.despesas_total,
       resultado: totals.resultado,
+      receita_estimada_planos: estimate.valor,
       novos: plans.novos,
       cancelados: plans.cancelados,
       ativos: plans.ativos,

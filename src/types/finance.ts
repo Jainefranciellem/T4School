@@ -64,11 +64,17 @@ export interface DistributionItem {
   valor: number;
 }
 
+export interface PlanEstimate {
+  valor: number;
+  qtd: number;
+  sem_preco: number;
+}
+
 export interface FinanceSummary {
   mes: string;
   mes_anterior: string;
-  atual: MonthTotals & { planos: PlanCounts; clientes: { inadimplentes: number } };
-  anterior: MonthTotals & { planos: PlanCounts };
+  atual: MonthTotals & { planos: PlanCounts; estimativa_planos: PlanEstimate; clientes: { inadimplentes: number } };
+  anterior: MonthTotals & { planos: PlanCounts; estimativa_planos: PlanEstimate };
   variacao: Record<
     'receita_recebida' | 'receita_prevista' | 'despesas_total' | 'resultado' | 'novos' | 'cancelados' | 'ativos',
     number | null
@@ -88,6 +94,7 @@ export interface FinanceHistoryRow {
   receita_pendente: number;
   despesas_total: number;
   resultado: number;
+  receita_estimada_planos: number;
   novos: number;
   cancelados: number;
   ativos: number;

@@ -3,6 +3,28 @@ import { createStudentSchema, updateStudentSchema } from '../schemas/student.sch
 import { requireAuth } from '../middleware/auth.js';
 import { notifyProfessors } from '../lib/notify-professors.js';
 import { computeStudentAlerts } from '../lib/student-alerts.js';
+import { todayBR } from '../lib/finance.js';
+import type { Plan, Prisma, Student } from '@prisma/client';
+
+// Aquisição de plano vira receita Pendente (valor de tabela, editável) pra não
+// depender de lançamento manual. Pendente porque o sistema não sabe se foi pago.
+function planSaleData(student: Student, plan: Plan): Prisma.FinancialTransactionUncheckedCreateInput {
+  const today = todayBR();
+  return {
+    tipo: 'Receita',
+    descricao: `${plan.nome} — ${student.nome}`,
+    valor: plan.preco,
+    data: today,
+    competencia: today.slice(0, 7),
+    categoria: 'Plano',
+    status: 'Pendente',
+    aluno_id: student.id,
+    aluno_nome: student.nome,
+    plano_id: plan.id,
+    plano_nome: plan.nome,
+    observacoes: 'Gerado automaticamente ao adquirir o plano',
+  };
+}
 
 export async function studentsRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireAuth);
@@ -26,8 +48,15 @@ export async function studentsRoutes(app: FastifyInstance) {
 
   app.post('/students', async (request, reply) => {
     const data = createStudentSchema.parse(request.body);
-    const student = await app.prisma.student.create({
-      data: { ...data, inativado_em: data.status === 'Inativo' ? new Date() : null },
+    const plan = await app.prisma.plan.findUnique({ where: { nome: data.plano } });
+    const student = await app.prisma.$transaction(async (tx) => {
+      const created = await tx.student.create({
+        data: { ...data, inativado_em: data.status === 'Inativo' ? new Date() : null },
+      });
+      if (plan && Number(plan.preco) > 0) {
+        await tx.financialTransaction.create({ data: planSaleData(created, plan) });
+      }
+      return created;
     });
 
     await notifyProfessors(app.prisma, {
@@ -53,7 +82,19 @@ export async function studentsRoutes(app: FastifyInstance) {
           : null
         : undefined;
 
-    const student = await app.prisma.student.update({ where: { id }, data: { ...data, inativado_em } });
+    // Trocar de plano é uma nova aquisição: gera a receita do plano novo.
+    const newPlan =
+      data.plano && data.plano !== exists.plano
+        ? await app.prisma.plan.findUnique({ where: { nome: data.plano } })
+        : null;
+
+    const student = await app.prisma.$transaction(async (tx) => {
+      const updated = await tx.student.update({ where: { id }, data: { ...data, inativado_em } });
+      if (newPlan && Number(newPlan.preco) > 0) {
+        await tx.financialTransaction.create({ data: planSaleData(updated, newPlan) });
+      }
+      return updated;
+    });
     return student;
   });
 

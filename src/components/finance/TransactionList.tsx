@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Edit, Trash2, Wallet } from 'lucide-react';
+import { CheckCircle2, Edit, Trash2, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatBRL, formatDateBR } from '@/lib/finance-format';
 import type { EffectiveStatus, FinancialTransaction } from '@/types/finance';
@@ -25,12 +25,13 @@ interface Props {
   items: FinancialTransaction[];
   onEdit: (tx: FinancialTransaction) => void;
   onDelete: (tx: FinancialTransaction) => void;
+  onMarkPaid: (tx: FinancialTransaction) => void;
 }
 
 const amountClass = (tx: FinancialTransaction) =>
   cn('font-semibold', tx.status === 'Cancelado' && 'line-through text-muted-foreground');
 
-export const TransactionList: React.FC<Props> = ({ items, onEdit, onDelete }) => {
+export const TransactionList: React.FC<Props> = ({ items, onEdit, onDelete, onMarkPaid }) => {
   if (items.length === 0) {
     return (
       <div className="py-12 text-center text-muted-foreground">
@@ -42,6 +43,17 @@ export const TransactionList: React.FC<Props> = ({ items, onEdit, onDelete }) =>
 
   const actions = (tx: FinancialTransaction) => (
     <div className="flex justify-end gap-1">
+      {tx.status === 'Pendente' && (
+        <Button
+          variant="ghost"
+          size="icon"
+          title={tx.tipo === 'Receita' ? 'Marcar como recebido' : 'Marcar como pago'}
+          className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+          onClick={() => onMarkPaid(tx)}
+        >
+          <CheckCircle2 className="h-4 w-4" />
+        </Button>
+      )}
       <Button variant="ghost" size="icon" title="Editar" onClick={() => onEdit(tx)}>
         <Edit className="h-4 w-4" />
       </Button>

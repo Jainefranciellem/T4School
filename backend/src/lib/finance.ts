@@ -171,3 +171,40 @@ export function planCountsFor(students: StudentLike[], mes: string): PlanCounts 
 
   return { novos, cancelados, ativos, saldo_liquido: novos - cancelados };
 }
+
+export interface PlanEstimate {
+  valor: number;
+  qtd: number;
+  // alunos do mês cujo plano não foi encontrado (renomeado/excluído): ficam fora do valor
+  sem_preco: number;
+}
+
+// Estimativa retroativa de receita por planos adquiridos: preço ATUAL do plano
+// atual do aluno, no mês do cadastro. Ignora quem já tem lançamento real de
+// receita de plano (pra não contar em dobro quando o dado real existir).
+// É um piso aproximado — renovações e trocas de pacote não ficam registradas.
+export function planEstimateFor(
+  students: Pick<StudentLike, 'id' | 'plano' | 'created_at'>[],
+  priceByPlanName: Map<string, number>,
+  studentsWithRealRevenue: Set<string>,
+  mes: string
+): PlanEstimate {
+  const { start, end } = monthBounds(mes);
+  let cents = 0;
+  let qtd = 0;
+  let semPreco = 0;
+
+  for (const s of students) {
+    if (s.created_at < start || s.created_at >= end) continue;
+    if (studentsWithRealRevenue.has(s.id)) continue;
+    const price = priceByPlanName.get(s.plano);
+    if (price === undefined) {
+      semPreco++;
+      continue;
+    }
+    qtd++;
+    cents += toCents(price);
+  }
+
+  return { valor: fromCents(cents), qtd, sem_preco: semPreco };
+}
