@@ -1,4 +1,4 @@
-import { Student } from '@/types';
+import { Student, StudentAlert } from '@/types';
 import { apiFetch } from './api';
 
 export function listarAlunos(): Promise<Student[]> {
@@ -21,4 +21,8 @@ export function atualizarAluno(id: string, data: Partial<Student>): Promise<Stud
 
 export function excluirAluno(id: string): Promise<void> {
   return apiFetch(`/students/${id}`, { method: 'DELETE' });
+}
+
+export function listarAlertasAlunos(): Promise<StudentAlert[]> {
+  return apiFetch('/students/alerts');
 }

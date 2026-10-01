@@ -5,6 +5,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { notifyStudent } from '../lib/notify-student.js';
 import { notifyProfessors } from '../lib/notify-professors.js';
 import { formatDateBR, lessonTypeLabel } from '../lib/format.js';
+import { closePackageIfFinished } from '../lib/student-alerts.js';
 
 const ACTIVE_STATUSES: LessonStatus[] = ['Agendada', 'Confirmada', 'Implementada'];
 
@@ -193,6 +194,13 @@ export async function lessonsRoutes(app: FastifyInstance) {
       ]);
     } else {
       lesson = await app.prisma.lesson.update({ where: { id }, data });
+    }
+
+    // Aula concluída pode ter fechado o pacote do aluno: inativa automaticamente.
+    if ((lesson.status === 'Compareceu' || lesson.status === 'Faltou') && lesson.status !== exists.status) {
+      await closePackageIfFinished(app.prisma, lesson.aluno_id, app.log).catch((error) =>
+        app.log.error({ err: error, lessonId: lesson.id }, 'Falha ao encerrar pacote do aluno')
+      );
     }
 
     const lessonStudent = await app.prisma.student.findUnique({ where: { id: lesson.aluno_id } });

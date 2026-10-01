@@ -64,6 +64,7 @@ const Agenda: React.FC = () => {
     mutationFn: AulasService.criarAula,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['aulas'] });
+      queryClient.invalidateQueries({ queryKey: ['alunos'] });
       toast({ title: 'Sucesso', description: 'Aula agendada com sucesso!' });
       setIsModalOpen(false);
     },
@@ -77,6 +78,7 @@ const Agenda: React.FC = () => {
       AulasService.atualizarAula(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['aulas'] });
+      queryClient.invalidateQueries({ queryKey: ['alunos'] });
       toast({ title: 'Sucesso', description: 'Aula atualizada com sucesso!' });
       setIsModalOpen(false);
       setSelectedLesson(null);
@@ -90,6 +92,7 @@ const Agenda: React.FC = () => {
     mutationFn: AulasService.deletarAula,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['aulas'] });
+      queryClient.invalidateQueries({ queryKey: ['alunos'] });
       toast({ title: 'Aula excluída', description: 'A aula foi removida do histórico.' });
       setIsDeleteModalOpen(false);
       setLessonToDelete(null);

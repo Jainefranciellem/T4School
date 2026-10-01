@@ -28,7 +28,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { listarAlunos, criarAluno, atualizarAluno, excluirAluno } from '@/lib/students.service';
+import { listarAlunos, criarAluno, atualizarAluno, excluirAluno, listarAlertasAlunos } from '@/lib/students.service';
+import { StudentAlertBadges } from '@/components/students/StudentAlertBadges';
 import { listarPlanos } from '@/lib/plans.service';
 import { Student } from '@/types';
 import { useToast } from '@/hooks/use-toast';
@@ -56,6 +57,7 @@ const Students: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] =
     useState<'all' | 'Ativo' | 'Inativo'>('all');
+  const [alertFilter, setAlertFilter] = useState<'all' | 'poucas' | 'sem_aula'>('all');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -83,6 +85,12 @@ const Students: React.FC = () => {
     queryKey: ['alunos'],
     queryFn: listarAlunos,
   });
+
+  const { data: alertList = [] } = useQuery({
+    queryKey: ['alunos', 'alertas'],
+    queryFn: listarAlertasAlunos,
+  });
+  const alertsById = new Map(alertList.map((a) => [a.aluno_id, a]));
 
   const { data: plans = [] } = useQuery({
     queryKey: ['plans'],
@@ -149,7 +157,13 @@ const Students: React.FC = () => {
     const matchesStatus =
       statusFilter === 'all' || student.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
+    const alert = alertsById.get(student.id);
+    const matchesAlert =
+      alertFilter === 'all' ||
+      (alertFilter === 'poucas' && !!alert?.poucas_aulas) ||
+      (alertFilter === 'sem_aula' && !!alert?.sem_aula);
+
+    return matchesSearch && matchesStatus && matchesAlert;
   });
 
   /* =======================
@@ -318,6 +332,17 @@ const Students: React.FC = () => {
               <SelectItem value="Inativo">Inativos</SelectItem>
             </SelectContent>
           </Select>
+
+          <Select value={alertFilter} onValueChange={(v) => setAlertFilter(v as 'all' | 'poucas' | 'sem_aula')}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os alertas</SelectItem>
+              <SelectItem value="poucas">Poucas aulas</SelectItem>
+              <SelectItem value="sem_aula">Sem aula há 15+ dias</SelectItem>
+            </SelectContent>
+          </Select>
         </CardContent>
       </Card>
 
@@ -332,6 +357,7 @@ const Students: React.FC = () => {
                   <Badge variant="secondary" className="mt-1">
                     {student.plano}
                   </Badge>
+                  <StudentAlertBadges alert={alertsById.get(student.id)} className="mt-1" />
                 </div>
                 <Badge variant={student.status === 'Ativo' ? 'success' : 'destructive'}>
                   {student.status}
@@ -389,6 +415,7 @@ const Students: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary">{student.plano}</Badge>
+                    <StudentAlertBadges alert={alertsById.get(student.id)} className="mt-1" />
                   </TableCell>
                   <TableCell className="text-center">
                     {getAulasLabel(student)}

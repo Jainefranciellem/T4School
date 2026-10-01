@@ -65,23 +65,27 @@ model Plan {
 }
 
 model Student {
-  id                     String                 @id @default(uuid())
-  nome                   String
-  telefone               String
-  email                  String
-  plano                  String
-  aulas_restantes        Int                    @default(0)
-  status                 StudentStatus          @default(Ativo)
-  avatar                 String?
-  access_token           String                 @unique @default(dbgenerated("gen_random_uuid()::text"))
-  lessons                Lesson[]
-  device_tokens          StudentDeviceToken[]
-  financial_transactions FinancialTransaction[]
+  id                          String                 @id @default(uuid())
+  nome                        String
+  telefone                    String
+  email                       String
+  plano                       String
+  aulas_restantes             Int                    @default(0)
+  status                      StudentStatus          @default(Ativo)
+  avatar                      String?
+  access_token                String                 @unique @default(dbgenerated("gen_random_uuid()::text"))
+  lessons                     Lesson[]
+  device_tokens               StudentDeviceToken[]
+  financial_transactions      FinancialTransaction[]
   // Quando o aluno virou Inativo (limpo ao reativar) — base do "cancelamentos
   // por mês" e da base ativa histórica no módulo financeiro.
-  inativado_em           DateTime?
-  created_at             DateTime               @default(now())
-  updated_at             DateTime               @updatedAt
+  inativado_em                DateTime?
+  // Marcam que o alerta do episódio atual já foi enviado (evita push repetido a
+  // cada rodada do job); voltam a false quando a condição deixa de valer.
+  alerta_poucas_aulas_enviado Boolean                @default(false)
+  alerta_inatividade_enviado  Boolean                @default(false)
+  created_at                  DateTime               @default(now())
+  updated_at                  DateTime               @updatedAt
 }
 
 model Lesson {
