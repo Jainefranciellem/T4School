@@ -13,6 +13,7 @@ import { deviceTokensRoutes } from './routes/device-tokens.routes.js';
 import { jobsRoutes } from './routes/jobs.routes.js';
 import { portalRoutes } from './routes/portal.routes.js';
 import { blockedDatesRoutes } from './routes/blocked-dates.routes.js';
+import { financeRoutes } from './routes/finance.routes.js';
 
 export async function buildApp() {
   const app = Fastify({ logger: true });
@@ -50,6 +51,7 @@ export async function buildApp() {
   await app.register(jobsRoutes);
   await app.register(portalRoutes);
   await app.register(blockedDatesRoutes);
+  await app.register(financeRoutes);
 
   return app;
 }

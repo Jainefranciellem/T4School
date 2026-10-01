@@ -12,6 +12,7 @@ import Agenda from "@/pages/Agenda";
 import Students from "@/pages/Students";
 import Plans from "@/pages/Plans";
 import Reports from "@/pages/Reports";
+import Financeiro from "@/pages/Financeiro";
 import Settings from "@/pages/Settings";
 import Portal from "@/pages/Portal";
 import NotFound from "./pages/NotFound";
@@ -36,6 +37,7 @@ const App = () => (
               <Route path="alunos" element={<Students />} />
               <Route path="planos" element={<Plans />} />
               <Route path="relatorios" element={<Reports />} />
+              <Route path="financeiro" element={<Financeiro />} />
               <Route path="configuracoes" element={<Settings />} />
             </Route>
             <Route path="*" element={<NotFound />} />

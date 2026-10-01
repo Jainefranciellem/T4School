@@ -19,7 +19,9 @@ export async function studentsRoutes(app: FastifyInstance) {
 
   app.post('/students', async (request, reply) => {
     const data = createStudentSchema.parse(request.body);
-    const student = await app.prisma.student.create({ data });
+    const student = await app.prisma.student.create({
+      data: { ...data, inativado_em: data.status === 'Inativo' ? new Date() : null },
+    });
 
     await notifyProfessors(app.prisma, {
       title: 'Novo aluno cadastrado',
@@ -36,7 +38,15 @@ export async function studentsRoutes(app: FastifyInstance) {
     const exists = await app.prisma.student.findUnique({ where: { id } });
     if (!exists) return reply.code(404).send({ message: 'Aluno não encontrado' });
 
-    const student = await app.prisma.student.update({ where: { id }, data });
+    // Marca/limpa a data de inativação (base do "cancelamentos por mês" no financeiro).
+    const inativado_em =
+      data.status && data.status !== exists.status
+        ? data.status === 'Inativo'
+          ? new Date()
+          : null
+        : undefined;
+
+    const student = await app.prisma.student.update({ where: { id }, data: { ...data, inativado_em } });
     return student;
   });
 

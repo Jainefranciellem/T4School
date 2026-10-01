@@ -22,3 +22,10 @@ export async function requireAuth(request: FastifyRequest, reply: FastifyReply) 
     return reply.code(401).send({ message: 'Token de acesso inválido ou expirado' });
   }
 }
+
+// Dados financeiros só para ADMIN. Deve rodar depois de requireAuth.
+export async function requireAdmin(request: FastifyRequest, reply: FastifyReply) {
+  if (request.user?.role !== 'ADMIN') {
+    return reply.code(403).send({ message: 'Acesso restrito ao administrador' });
+  }
+}
