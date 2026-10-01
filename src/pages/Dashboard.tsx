@@ -14,12 +14,13 @@ import {
   Plus,
   ArrowRight,
   TrendingUp,
+  AlertTriangle,
   Loader2,
 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AulasService } from '@/lib/aulas.service';
 import { Aula } from '@/types';
-import { listarAlunos } from '@/lib/students.service';
+import { listarAlunos, listarAlertasAlunos } from '@/lib/students.service';
 import { useToast } from '@/hooks/use-toast';
 import { format, addDays } from 'date-fns';
 
@@ -37,6 +38,13 @@ const Dashboard: React.FC = () => {
     queryKey: ['alunos'],
     queryFn: listarAlunos,
   });
+
+  const { data: studentAlerts = [] } = useQuery({
+    queryKey: ['alunos', 'alertas'],
+    queryFn: listarAlertasAlunos,
+  });
+  const lowLessonAlerts = studentAlerts.filter((a) => a.poucas_aulas);
+  const idleAlerts = studentAlerts.filter((a) => a.sem_aula);
 
   // Derived state
   const today = new Date();
@@ -63,6 +71,7 @@ const Dashboard: React.FC = () => {
     mutationFn: AulasService.criarAula,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['aulas'] });
+      queryClient.invalidateQueries({ queryKey: ['alunos'] });
       toast({ title: 'Sucesso', description: 'Aula agendada com sucesso!' });
       setIsModalOpen(false);
     },
@@ -76,6 +85,7 @@ const Dashboard: React.FC = () => {
       AulasService.atualizarAula(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['aulas'] });
+      queryClient.invalidateQueries({ queryKey: ['alunos'] });
       toast({ title: 'Sucesso', description: 'Aula atualizada com sucesso!' });
       setIsModalOpen(false);
       setSelectedLesson(null);
@@ -268,6 +278,49 @@ const Dashboard: React.FC = () => {
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {(lowLessonAlerts.length > 0 || idleAlerts.length > 0) && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <AlertTriangle className="h-5 w-5 text-amber-600" />
+                  Atenção
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {lowLessonAlerts.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium uppercase text-muted-foreground">Poucas aulas</p>
+                    {lowLessonAlerts.slice(0, 5).map((a) => (
+                      <Link key={a.aluno_id} to="/alunos" className="flex justify-between gap-2 text-sm hover:underline">
+                        <span className="truncate">{a.nome}</span>
+                        <span className="text-amber-700 whitespace-nowrap">
+                          {a.restam === 1 ? 'última aula' : `restam ${a.restam}`}
+                        </span>
+                      </Link>
+                    ))}
+                    {lowLessonAlerts.length > 5 && (
+                      <p className="text-xs text-muted-foreground">e mais {lowLessonAlerts.length - 5}</p>
+                    )}
+                  </div>
+                )}
+                {idleAlerts.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium uppercase text-muted-foreground">Sem aula há 15+ dias</p>
+                    {idleAlerts.slice(0, 5).map((a) => (
+                      <Link key={a.aluno_id} to="/alunos" className="flex justify-between gap-2 text-sm hover:underline">
+                        <span className="truncate">{a.nome}</span>
+                        <span className="text-orange-700 whitespace-nowrap">{a.dias_sem_aula} dias</span>
+                      </Link>
+                    ))}
+                    {idleAlerts.length > 5 && (
+                      <p className="text-xs text-muted-foreground">e mais {idleAlerts.length - 5}</p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Quick actions */}
           <Card variant="ocean" className="overflow-hidden">
             <CardContent className="p-6">
@@ -296,48 +349,6 @@ const Dashboard: React.FC = () => {
                   </Link>
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Students needing attention */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Alunos com Poucas Aulas</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {activeStudents
-                .filter((s) => (s.aulas_restantes ?? 0) <= 3)
-                .slice(0, 4)
-                .map((student) => (
-                  <div
-                    key={student.id}
-                    className="flex items-center justify-between p-3 bg-muted rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <span className="text-sm font-medium text-primary">
-                          {student.nome.charAt(0)}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">{student.nome}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {student.plano}
-                        </p>
-                      </div>
-                    </div>
-                    <span
-                      className={`text-sm font-bold ${(student.aulas_restantes ?? 0) === 0
-                        ? 'text-destructive'
-                        : (student.aulas_restantes ?? 0) <= 2
-                          ? 'text-warning'
-                          : 'text-muted-foreground'
-                        }`}
-                    >
-                      {student.aulas_restantes} aulas
-                    </span>
-                  </div>
-                ))}
             </CardContent>
           </Card>
         </div>

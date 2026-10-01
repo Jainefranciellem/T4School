@@ -3,6 +3,7 @@ import { buildApp } from './app.js';
 import { env } from './env.js';
 import { runReminderJob } from './jobs/reminders.job.js';
 import { runLockLessonsJob } from './jobs/lock-lessons.job.js';
+import { runStudentAlertsJob } from './lib/student-alerts.js';
 
 async function main() {
   const app = await buildApp();
@@ -27,6 +28,13 @@ async function main() {
       app.log.info(result, 'Job de bloqueio de aulas executado');
     } catch (error) {
       app.log.error(error, 'Job de bloqueio de aulas falhou');
+    }
+
+    try {
+      const result = await runStudentAlertsJob(app.prisma, app.log);
+      app.log.info(result, 'Job de alertas de alunos executado');
+    } catch (error) {
+      app.log.error(error, 'Job de alertas de alunos falhou');
     }
   });
 }

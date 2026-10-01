@@ -2,12 +2,19 @@ import type { FastifyInstance } from 'fastify';
 import { createStudentSchema, updateStudentSchema } from '../schemas/student.schema.js';
 import { requireAuth } from '../middleware/auth.js';
 import { notifyProfessors } from '../lib/notify-professors.js';
+import { computeStudentAlerts } from '../lib/student-alerts.js';
 
 export async function studentsRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireAuth);
 
   app.get('/students', async () => {
     return app.prisma.student.findMany({ orderBy: { nome: 'asc' } });
+  });
+
+  // Etiquetas de alerta (poucas aulas / sem aula há N dias) dos alunos ativos.
+  app.get('/students/alerts', async () => {
+    const alerts = await computeStudentAlerts(app.prisma);
+    return alerts.map(({ alerta_poucas_aulas_enviado: _a, alerta_inatividade_enviado: _b, ...rest }) => rest);
   });
 
   app.get('/students/:id', async (request, reply) => {

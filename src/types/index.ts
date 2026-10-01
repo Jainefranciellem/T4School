@@ -66,3 +66,14 @@ export interface BlockedDate {
   motivo?: string | null;
   created_at: string;
 }
+
+export interface StudentAlert {
+  aluno_id: string;
+  nome: string;
+  aulas_restantes: number;
+  restam: number;
+  poucas_aulas: boolean;
+  sem_aula: boolean;
+  dias_sem_aula: number | null;
+  ultima_aula: string | null;
+}
