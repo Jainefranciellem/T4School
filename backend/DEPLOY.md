@@ -106,11 +106,13 @@ gera deploy de **Preview** na Vercel (API e frontend) usando um banco **separado
    vercel env add JWT_REFRESH_SECRET preview hml
    vercel env add CORS_ORIGIN preview hml       # URL do preview do frontend da branch hml
    vercel env add CRON_SECRET preview hml
+   vercel env add INTERNAL_JOB_SECRET preview hml
    ```
    Depois remova "Preview" das variáveis equivalentes que hoje valem para Production *e* Preview
    (Dashboard > Settings > Environment Variables), deixando só Production.
-   Não configure `FIREBASE_SERVICE_ACCOUNT` nem `INTERNAL_JOB_SECRET` em Preview: sem eles não
-   saem push/lembretes de teste pra aluno real.
+   Também é obrigatório `INTERNAL_JOB_SECRET` (o `env.ts` valida; sem ele a função cai com 500),
+   com um valor próprio de hml. Não configure `FIREBASE_SERVICE_ACCOUNT` em Preview: sem ele não
+   sai push de teste pra aluno real.
 3. **Frontend**: em Preview da branch `hml`, `VITE_API_BASE_URL` = URL do preview da API de hml.
 4. **Seed do admin** no banco de hml (rodando local com o `DATABASE_URL` de hml):
    `SEED_ADMIN_EMAIL=... SEED_ADMIN_PASSWORD=... npm run seed`.
