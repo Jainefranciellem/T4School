@@ -6,7 +6,7 @@ import { LucideIcon } from 'lucide-react';
 interface StatsCardProps {
   title: string;
   value: string | number;
-  subtitle?: string;
+  subtitle?: React.ReactNode;
   icon: LucideIcon;
   trend?: {
     value: number;
@@ -54,7 +54,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
               )}
             </div>
             {subtitle && (
-              <p className="text-sm text-muted-foreground">{subtitle}</p>
+              <div className="text-sm text-muted-foreground">{subtitle}</div>
             )}
           </div>
           <div

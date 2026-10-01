@@ -28,6 +28,17 @@ enum LessonStatus {
   Cancelada
 }
 
+enum FinancialType {
+  Receita
+  Despesa
+}
+
+enum FinancialStatus {
+  Pendente
+  Pago
+  Cancelado
+}
+
 enum LessonType {
   Surf
   SurfSkate
@@ -44,47 +55,52 @@ model User {
 }
 
 model Plan {
-  id            String   @id @default(uuid())
-  nome          String   @unique
-  qtd_aulas     Int
-  validade_dias Int
-  preco         Decimal  @db.Decimal(10, 2)
-  created_at    DateTime @default(now())
+  id                     String                 @id @default(uuid())
+  nome                   String                 @unique
+  qtd_aulas              Int
+  validade_dias          Int
+  preco                  Decimal                @db.Decimal(10, 2)
+  financial_transactions FinancialTransaction[]
+  created_at             DateTime               @default(now())
 }
 
 model Student {
-  id              String        @id @default(uuid())
-  nome            String
-  telefone        String
-  email           String
-  plano           String
-  aulas_restantes Int           @default(0)
-  status          StudentStatus @default(Ativo)
-  avatar          String?
-  access_token    String        @unique @default(dbgenerated("gen_random_uuid()::text"))
-  lessons         Lesson[]
-  device_tokens   StudentDeviceToken[]
-  created_at      DateTime      @default(now())
-  updated_at      DateTime      @updatedAt
+  id                     String                 @id @default(uuid())
+  nome                   String
+  telefone               String
+  email                  String
+  plano                  String
+  aulas_restantes        Int                    @default(0)
+  status                 StudentStatus          @default(Ativo)
+  avatar                 String?
+  access_token           String                 @unique @default(dbgenerated("gen_random_uuid()::text"))
+  lessons                Lesson[]
+  device_tokens          StudentDeviceToken[]
+  financial_transactions FinancialTransaction[]
+  // Quando o aluno virou Inativo (limpo ao reativar) — base do "cancelamentos
+  // por mês" e da base ativa histórica no módulo financeiro.
+  inativado_em           DateTime?
+  created_at             DateTime               @default(now())
+  updated_at             DateTime               @updatedAt
 }
 
 model Lesson {
-  id                  String       @id @default(uuid())
-  aluno_id            String
-  student             Student      @relation(fields: [aluno_id], references: [id], onDelete: Cascade)
-  data                String
-  hora                String
-  local               String
-  instrutor           String
-  tipo                LessonType   @default(Surf)
-  status              LessonStatus @default(Agendada)
-  observacoes         String?
-  notificacao_enviada Boolean      @default(false)
-  enviar_notificacao  Boolean      @default(true)
-  lembrete_enviado         Boolean @default(false)
-  lembrete_dobrado_enviado Boolean @default(false)
-  created_at          DateTime     @default(now())
-  updated_at          DateTime     @updatedAt
+  id                       String       @id @default(uuid())
+  aluno_id                 String
+  student                  Student      @relation(fields: [aluno_id], references: [id], onDelete: Cascade)
+  data                     String
+  hora                     String
+  local                    String
+  instrutor                String
+  tipo                     LessonType   @default(Surf)
+  status                   LessonStatus @default(Agendada)
+  observacoes              String?
+  notificacao_enviada      Boolean      @default(false)
+  enviar_notificacao       Boolean      @default(true)
+  lembrete_enviado         Boolean      @default(false)
+  lembrete_dobrado_enviado Boolean      @default(false)
+  created_at               DateTime     @default(now())
+  updated_at               DateTime     @updatedAt
 
   @@index([data])
   @@index([aluno_id])
@@ -112,22 +128,22 @@ model StudentDeviceToken {
 }
 
 model Settings {
-  id                    String  @id @default("singleton")
-  whatsapp_phone_id     String?
-  whatsapp_token        String?
-  resend_api_key        String?
-  email_from            String?
-  send_reminders          Boolean @default(true)
-  reminder_hours          Int     @default(24)
-  double_reminder         Boolean @default(true)
-  double_reminder_minutes Int     @default(15)
-  template_reminder     String  @default("Olá {{nome}}! Lembrete: sua aula de surf é hoje às {{hora}} no {{local}} com {{instrutor}}.")
-  template_confirmed    String  @default("Presença confirmada! Te esperamos na aula de hoje.")
-  template_cancelled    String  @default("Tudo bem — registramos sua ausência. Entre em contato para remarcar.")
-  template_rescheduled  String  @default("Olá {{nome}}! Sua aula foi remarcada para {{data}} às {{hora}}, em {{local}} com {{instrutor}}.")
-  instructor_name       String   @default("Torquato")
-  locations             String[] @default(["Cinelandia", "Bomba", "Cara de Sapo", "Sementeira"])
-  weekly_schedule       Json?
+  id                      String   @id @default("singleton")
+  whatsapp_phone_id       String?
+  whatsapp_token          String?
+  resend_api_key          String?
+  email_from              String?
+  send_reminders          Boolean  @default(true)
+  reminder_hours          Int      @default(24)
+  double_reminder         Boolean  @default(true)
+  double_reminder_minutes Int      @default(15)
+  template_reminder       String   @default("Olá {{nome}}! Lembrete: sua aula de surf é hoje às {{hora}} no {{local}} com {{instrutor}}.")
+  template_confirmed      String   @default("Presença confirmada! Te esperamos na aula de hoje.")
+  template_cancelled      String   @default("Tudo bem — registramos sua ausência. Entre em contato para remarcar.")
+  template_rescheduled    String   @default("Olá {{nome}}! Sua aula foi remarcada para {{data}} às {{hora}}, em {{local}} com {{instrutor}}.")
+  instructor_name         String   @default("Torquato")
+  locations               String[] @default(["Cinelandia", "Bomba", "Cara de Sapo", "Sementeira"])
+  weekly_schedule         Json?
 }
 
 model BlockedDate {
@@ -137,4 +153,35 @@ model BlockedDate {
   created_at DateTime @default(now())
 
   @@index([data])
+}
+
+// Lançamento financeiro manual (receita ou despesa). `data` é o vencimento/
+// data do lançamento; `competencia` (yyyy-MM) é o mês de referência dos
+// relatórios. "Atrasado" não é gravado: é Pendente com `data` já passada.
+// aluno_nome/plano_nome são snapshots pra não perder o histórico se o aluno
+// ou o plano forem excluídos (as FKs viram NULL).
+model FinancialTransaction {
+  id             String          @id @default(uuid())
+  tipo           FinancialType
+  descricao      String
+  valor          Decimal         @db.Decimal(12, 2)
+  data           String
+  competencia    String
+  categoria      String
+  status         FinancialStatus @default(Pendente)
+  data_pagamento String?
+  aluno_id       String?
+  student        Student?        @relation(fields: [aluno_id], references: [id], onDelete: SetNull)
+  aluno_nome     String?
+  plano_id       String?
+  plan           Plan?           @relation(fields: [plano_id], references: [id], onDelete: SetNull)
+  plano_nome     String?
+  observacoes    String?
+  created_at     DateTime        @default(now())
+  updated_at     DateTime        @updatedAt
+
+  @@index([competencia, tipo])
+  @@index([data])
+  @@index([aluno_id])
+  @@index([plano_id])
 }

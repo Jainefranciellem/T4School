@@ -10,6 +10,7 @@ import {
     Users,
     PackageOpen,
     BarChart3,
+    Wallet,
     Settings,
     LogOut,
     Menu,
@@ -21,12 +22,13 @@ interface SidebarProps {
     onToggle: () => void;
 }
 
-const navItems = [
+const navItems: { path: string; icon: typeof Wallet; label: string; adminOnly?: boolean }[] = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/agenda', icon: Calendar, label: 'Agenda' },
     { path: '/alunos', icon: Users, label: 'Alunos' },
     { path: '/planos', icon: PackageOpen, label: 'Planos' },
     { path: '/relatorios', icon: BarChart3, label: 'Relatórios' },
+    { path: '/financeiro', icon: Wallet, label: 'Financeiro', adminOnly: true },
     { path: '/configuracoes', icon: Settings, label: 'Configurações' },
 ];
 
@@ -75,7 +77,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
 
                     {/* Navigation */}
                     <nav className="flex-1 p-4 space-y-1">
-                        {navItems.map((item) => (
+                        {navItems.filter((item) => !item.adminOnly || user?.role === 'admin').map((item) => (
                             <NavLink
                                 key={item.path}
                                 to={item.path}

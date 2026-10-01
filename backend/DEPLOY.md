@@ -84,3 +84,36 @@ Mesmo modelo de container contínuo da Render.
 
 - `JWT_SECRET`, `JWT_REFRESH_SECRET`, `INTERNAL_JOB_SECRET`, `CRON_SECRET`: strings aleatórias
   longas, ex. `openssl rand -base64 32`.
+
+
+## Ambiente de homologação (hml)
+
+Objetivo: validar mudanças (principalmente migrations) antes de ir pra produção. A branch `hml`
+gera deploy de **Preview** na Vercel (API e frontend) usando um banco **separado** do de produção.
+
+> ⚠️ O build da API roda `prisma migrate deploy`. Variáveis de banco marcadas para "Preview"
+> sem restrição de branch fariam qualquer preview migrar o banco de produção. Por isso as
+> variáveis de banco/JWT/CORS devem ser **Production** (sem Preview) e, em paralelo, **Preview
+> restritas à branch `hml`** com valores de hml.
+
+1. **Banco de hml**: outro projeto Supabase (grátis), mesmo formato do passo 2 da Opção A
+   (`DATABASE_URL` = pooler 6543 com `?pgbouncer=true`; `DIRECT_URL` = pooler 5432).
+2. **Variáveis do projeto da API** (a partir de `backend/`):
+   ```sh
+   vercel env add DATABASE_URL preview hml      # banco de hml
+   vercel env add DIRECT_URL preview hml
+   vercel env add JWT_SECRET preview hml        # valores diferentes dos de produção
+   vercel env add JWT_REFRESH_SECRET preview hml
+   vercel env add CORS_ORIGIN preview hml       # URL do preview do frontend da branch hml
+   vercel env add CRON_SECRET preview hml
+   ```
+   Depois remova "Preview" das variáveis equivalentes que hoje valem para Production *e* Preview
+   (Dashboard > Settings > Environment Variables), deixando só Production.
+   Não configure `FIREBASE_SERVICE_ACCOUNT` nem `INTERNAL_JOB_SECRET` em Preview: sem eles não
+   saem push/lembretes de teste pra aluno real.
+3. **Frontend**: em Preview da branch `hml`, `VITE_API_BASE_URL` = URL do preview da API de hml.
+4. **Seed do admin** no banco de hml (rodando local com o `DATABASE_URL` de hml):
+   `SEED_ADMIN_EMAIL=... SEED_ADMIN_PASSWORD=... npm run seed`.
+5. **Fluxo**: trabalho em branch → merge em `hml` → validar no preview → PR `hml` → `main`.
+6. O workflow `.github/workflows/reminders.yml` só aponta para produção (secrets do repositório);
+   hml não recebe lembretes.
