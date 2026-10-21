@@ -56,14 +56,50 @@ const Portal: React.FC = () => {
   const [bookingHora, setBookingHora] = useState('');
   const [bookingLocal, setBookingLocal] = useState('');
 
-  // O manifest.json tem start_url "/" (a tela de login do professor). No
-  // iOS, "Adicionar à Tela de Início" usa o start_url do manifest em vez
-  // da URL atual quando existe um <link rel="manifest">, então o ícone do
-  // aluno abriria sempre no login. Removendo o link aqui, o iOS cai no
-  // comportamento antigo e usa a URL da própria página do portal.
+  // O manifest.json global tem start_url "/" (login do professor), então o
+  // app instalado pelo aluno abriria no login. Trocamos pelo manifest do
+  // portal, com start_url apontando pra página dele — assim o ícone na tela
+  // de início abre direto no portal, sem pedir e-mail e senha.
   useEffect(() => {
-    document.querySelector('link[rel="manifest"]')?.remove();
-  }, []);
+    if (!token) return;
+    const origin = window.location.origin;
+    const startUrl = `${origin}/portal/${token}`;
+    const manifest = {
+      id: startUrl,
+      name: 'Minhas Aulas',
+      short_name: 'Aulas',
+      description: 'Agenda de aulas do aluno',
+      start_url: startUrl,
+      scope: `${origin}/portal/`,
+      display: 'standalone',
+      orientation: 'portrait',
+      background_color: '#ffffff',
+      theme_color: '#ff6b00',
+      icons: [
+        { src: `${origin}/icon-192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: `${origin}/icon-512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' },
+      ],
+    };
+    const href = `data:application/manifest+json,${encodeURIComponent(JSON.stringify(manifest))}`;
+
+    let link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+    const previousHref = link?.getAttribute('href') ?? null;
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'manifest';
+      document.head.appendChild(link);
+    }
+    link.setAttribute('href', href);
+
+    const appleTitle = document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]');
+    const previousTitle = appleTitle?.content ?? null;
+    if (appleTitle) appleTitle.content = 'Minhas Aulas';
+
+    return () => {
+      if (previousHref) link?.setAttribute('href', previousHref);
+      if (appleTitle && previousTitle !== null) appleTitle.content = previousTitle;
+    };
+  }, [token]);
 
   const {
     data: student,
