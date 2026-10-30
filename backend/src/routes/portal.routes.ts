@@ -58,6 +58,9 @@ async function isDateBlocked(app: FastifyInstance, data: string): Promise<boolea
 // pelo token antes de mais nada; se não achar, 404 — nunca vaza se o token
 // existe ou não de outra forma.
 export async function portalRoutes(app: FastifyInstance) {
+  // Rotas públicas: limita por IP pra dificultar varredura de tokens e abuso.
+  app.addHook('onRequest', app.rateLimit({ max: 60, timeWindow: '1 minute' }));
+
   app.get('/portal/:token', async (request, reply) => {
     const { token } = request.params as { token: string };
     const student = await app.prisma.student.findUnique({ where: { access_token: token } });

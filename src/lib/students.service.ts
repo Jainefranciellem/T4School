@@ -26,3 +26,7 @@ export function excluirAluno(id: string): Promise<void> {
 export function listarAlertasAlunos(): Promise<StudentAlert[]> {
   return apiFetch('/students/alerts');
 }
+
+export function gerarNovoLinkAluno(id: string): Promise<Student> {
+  return apiFetch(`/students/${id}/regenerate-link`, { method: 'POST' });
+}
