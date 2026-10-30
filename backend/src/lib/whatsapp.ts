@@ -1,22 +1,30 @@
 const GRAPH_API_VERSION = 'v20.0';
+const TEMPLATE_LANGUAGE = 'pt_BR';
 
-interface SendWhatsAppMessageParams {
+interface SendWhatsAppTemplateParams {
   phoneNumberId: string;
   accessToken: string;
   to: string;
-  message: string;
+  template: string;
+  params: string[];
 }
 
-function sanitizePhone(phone: string): string {
-  return phone.replace(/\D/g, '');
+// A API oficial só aceita texto livre dentro de 24h depois que o cliente
+// escreve; lembretes e avisos são mensagens ativas, então vão sempre por
+// template aprovado na Meta (ver docs/whatsapp-templates.md).
+export function sanitizePhone(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  // Número brasileiro cadastrado sem DDI (DDD + 8/9 dígitos): prefixa 55.
+  return digits.length === 10 || digits.length === 11 ? `55${digits}` : digits;
 }
 
-export async function sendWhatsAppMessage({
+export async function sendWhatsAppTemplate({
   phoneNumberId,
   accessToken,
   to,
-  message,
-}: SendWhatsAppMessageParams): Promise<void> {
+  template,
+  params,
+}: SendWhatsAppTemplateParams): Promise<void> {
   const response = await fetch(
     `https://graph.facebook.com/${GRAPH_API_VERSION}/${phoneNumberId}/messages`,
     {
@@ -28,8 +36,17 @@ export async function sendWhatsAppMessage({
       body: JSON.stringify({
         messaging_product: 'whatsapp',
         to: sanitizePhone(to),
-        type: 'text',
-        text: { body: message },
+        type: 'template',
+        template: {
+          name: template,
+          language: { code: TEMPLATE_LANGUAGE },
+          components: [
+            {
+              type: 'body',
+              parameters: params.map((text) => ({ type: 'text', text })),
+            },
+          ],
+        },
       }),
     }
   );
