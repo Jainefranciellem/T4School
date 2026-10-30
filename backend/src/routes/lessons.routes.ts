@@ -3,6 +3,7 @@ import type { Lesson, LessonStatus, Student } from '@prisma/client';
 import { createLessonSchema, updateLessonSchema } from '../schemas/lesson.schema.js';
 import { requireAuth } from '../middleware/auth.js';
 import { notifyStudent } from '../lib/notify-student.js';
+import { whatsappTemplates } from '../lib/whatsapp-templates.js';
 import { notifyProfessors } from '../lib/notify-professors.js';
 import { formatDateBR, lessonTypeLabel } from '../lib/format.js';
 import { closePackageIfFinished } from '../lib/student-alerts.js';
@@ -18,41 +19,39 @@ async function notifyStatusChange(app: FastifyInstance, lesson: Lesson, student:
   const template = lesson.status === 'Confirmada' ? settings.template_confirmed : settings.template_cancelled;
   const subject = lesson.status === 'Confirmada' ? 'Aula confirmada' : 'Aula cancelada';
 
-  await notifyStudent(
-    app.prisma,
-    settings,
-    student,
-    template,
-    {
-      nome: student.nome,
-      hora: lesson.hora,
-      local: lesson.local,
-      instrutor: lesson.instrutor,
-      data: lesson.data,
-    },
-    subject,
-    app.log
-  );
+  const vars = {
+    nome: student.nome,
+    hora: lesson.hora,
+    local: lesson.local,
+    instrutor: lesson.instrutor,
+    data: lesson.data,
+  };
+  const whatsapp = lesson.status === 'Confirmada' ? whatsappTemplates.confirmed(vars) : whatsappTemplates.cancelled(vars);
+
+  await notifyStudent(app.prisma, settings, student, template, vars, subject, app.log, whatsapp);
 }
 
 async function notifyReschedule(app: FastifyInstance, lesson: Lesson, student: Student) {
   const settings = await app.prisma.settings.findUnique({ where: { id: 'singleton' } });
   if (!settings) return;
 
+  const vars = {
+    nome: student.nome,
+    hora: lesson.hora,
+    local: lesson.local,
+    instrutor: lesson.instrutor,
+    data: lesson.data,
+  };
+
   await notifyStudent(
     app.prisma,
     settings,
     student,
     settings.template_rescheduled,
-    {
-      nome: student.nome,
-      hora: lesson.hora,
-      local: lesson.local,
-      instrutor: lesson.instrutor,
-      data: lesson.data,
-    },
+    vars,
     'Aula remarcada',
-    app.log
+    app.log,
+    whatsappTemplates.rescheduled(vars)
   );
 }
 

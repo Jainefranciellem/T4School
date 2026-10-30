@@ -1,6 +1,6 @@
 import type { PrismaClient, Settings, Student } from '@prisma/client';
-import { sendWhatsAppMessage } from './whatsapp.js';
-import { sendEmail } from './email.js';
+import { sendWhatsAppTemplate } from './whatsapp.js';
+import type { WhatsAppTemplateMessage } from './whatsapp-templates.js';
 import { sendPushNotification } from './firebase-admin.js';
 import { renderTemplate } from './message-template.js';
 
@@ -13,29 +13,30 @@ interface Logger {
   error: (obj: unknown, msg: string) => void;
 }
 
-// Sends the same rendered message to the student over every channel that has
-// credentials configured in Settings. Each channel is independent: one being
-// unconfigured or failing never blocks the other.
+// Avisa o aluno por WhatsApp (template aprovado na Meta) e por push (texto
+// renderizado a partir dos templates de Settings). Cada canal é independente:
+// um não configurado ou com falha nunca bloqueia o outro.
 export async function notifyStudent(
   prisma: PrismaClient,
   settings: Settings,
   student: Student,
   template: string,
   vars: Record<string, string>,
-  emailSubject: string,
-  logger: Logger
+  title: string,
+  logger: Logger,
+  whatsapp?: WhatsAppTemplateMessage
 ): Promise<NotifyStudentResult> {
   let sent = 0;
   let failed = 0;
   const message = renderTemplate(template, vars);
 
-  if (settings.whatsapp_phone_id && settings.whatsapp_token) {
+  if (whatsapp && settings.whatsapp_phone_id && settings.whatsapp_token) {
     try {
-      await sendWhatsAppMessage({
+      await sendWhatsAppTemplate({
         phoneNumberId: settings.whatsapp_phone_id,
         accessToken: settings.whatsapp_token,
         to: student.telefone,
-        message,
+        ...whatsapp,
       });
       sent++;
     } catch (error) {
@@ -44,28 +45,12 @@ export async function notifyStudent(
     }
   }
 
-  if (settings.resend_api_key && settings.email_from) {
-    try {
-      await sendEmail({
-        apiKey: settings.resend_api_key,
-        from: settings.email_from,
-        to: student.email,
-        subject: emailSubject,
-        text: message,
-      });
-      sent++;
-    } catch (error) {
-      failed++;
-      logger.error({ err: error }, 'Falha ao enviar email');
-    }
-  }
-
   const deviceTokens = await prisma.studentDeviceToken.findMany({ where: { student_id: student.id } });
   if (deviceTokens.length > 0) {
     try {
       const result = await sendPushNotification(
         deviceTokens.map((d) => d.token),
-        { title: emailSubject, body: message }
+        { title, body: message }
       );
       sent += result.sent;
       failed += result.failed;

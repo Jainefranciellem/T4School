@@ -412,7 +412,7 @@ const Portal: React.FC = () => {
                 {lesson.status === 'Implementada' && (
                   <div className="pt-2 border-t border-border">
                     <p className="text-xs text-muted-foreground">
-                      Aguardando confirmação do professor. Você já receberá um e-mail assim que ele confirmar.
+                      Aguardando confirmação do professor. Você será avisado assim que ele confirmar.
                     </p>
                   </div>
                 )}

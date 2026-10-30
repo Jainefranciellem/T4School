@@ -18,8 +18,6 @@ export const updateSettingsSchema = z.object({
   // configurados (o GET /settings retorna null pra eles nesse caso).
   whatsapp_phone_id: z.string().nullable().optional(),
   whatsapp_token: z.string().nullable().optional(),
-  resend_api_key: z.string().nullable().optional(),
-  email_from: z.string().min(1).nullable().optional(),
   send_reminders: z.boolean().optional(),
   reminder_hours: z.number().int().min(1).max(72).optional(),
   double_reminder: z.boolean().optional(),

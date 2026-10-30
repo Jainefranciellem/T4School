@@ -1,6 +1,7 @@
 import { LessonStatus, type PrismaClient } from '@prisma/client';
 import type { FastifyBaseLogger } from 'fastify';
 import { notifyStudent } from '../lib/notify-student.js';
+import { whatsappTemplates } from '../lib/whatsapp-templates.js';
 import { notifyProfessors } from '../lib/notify-professors.js';
 import { minutesUntilLesson } from '../lib/schedule.js';
 
@@ -55,7 +56,7 @@ export async function runReminderJob(
     // Tier 1 (X hours before) and tier 2 (double_reminder_minutes before) fire
     // independently: tier 2 does NOT require tier 1 to have happened, so the
     // professor's push and the close-to-lesson reminder still work even if
-    // neither WhatsApp nor email was ever configured for tier 1's window.
+    // WhatsApp was never configured for tier 1's window.
     const isFirstTierDue = !lesson.lembrete_enviado && remainingHours <= settings.reminder_hours;
 
     const isSecondTierDue =
@@ -71,7 +72,8 @@ export async function runReminderJob(
         settings.template_reminder,
         vars,
         'Lembrete de aula',
-        logger
+        logger,
+        whatsappTemplates.reminder(vars)
       );
       sent += result.sent;
       failed += result.failed;
@@ -87,7 +89,8 @@ export async function runReminderJob(
         settings.template_reminder,
         vars,
         'Sua aula está chegando',
-        logger
+        logger,
+        whatsappTemplates.reminder(vars)
       );
       sent += result.sent;
       failed += result.failed;
