@@ -28,7 +28,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { listarAlunos, criarAluno, atualizarAluno, excluirAluno, listarAlertasAlunos } from '@/lib/students.service';
+import { listarAlunos, criarAluno, atualizarAluno, excluirAluno, listarAlertasAlunos, gerarNovoLinkAluno } from '@/lib/students.service';
 import { StudentAlertBadges } from '@/components/students/StudentAlertBadges';
 import { listarPlanos } from '@/lib/plans.service';
 import { Student } from '@/types';
@@ -40,6 +40,7 @@ import {
   Calendar,
   MessageCircle,
   Link as LinkIcon,
+  RefreshCw,
   Phone,
   Mail,
   Filter,
@@ -219,6 +220,26 @@ const Students: React.FC = () => {
     }
   };
 
+  const [studentToRenewLink, setStudentToRenewLink] = useState<Student | null>(null);
+
+  const renewLinkMutation = useMutation({
+    mutationFn: gerarNovoLinkAluno,
+    onSuccess: async (student) => {
+      queryClient.invalidateQueries({ queryKey: ['alunos'] });
+      setStudentToRenewLink(null);
+      await navigator.clipboard
+        .writeText(`${window.location.origin}/portal/${student.access_token}`)
+        .catch(() => undefined);
+      toast({
+        title: 'Novo link gerado e copiado!',
+        description: 'O link antigo parou de funcionar. Mande o novo pro aluno.',
+      });
+    },
+    onError: () => {
+      toast({ title: 'Erro', description: 'Erro ao gerar novo link.', variant: 'destructive' });
+    },
+  });
+
   const handleDeleteClick = (student: Student) => {
     setStudentToDelete(student);
     setIsDeleteModalOpen(true);
@@ -267,6 +288,14 @@ const Students: React.FC = () => {
         title="Copiar link do portal do aluno"
       >
         <LinkIcon className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => setStudentToRenewLink(student)}
+        title="Gerar novo link (invalida o atual)"
+      >
+        <RefreshCw className="h-4 w-4" />
       </Button>
       <Button variant="ghost" size="icon" onClick={() => handleOpenModal(student)} title="Editar">
         <Edit className="h-4 w-4" />
@@ -552,6 +581,35 @@ const Students: React.FC = () => {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Renew Link Confirmation Modal */}
+      <Dialog open={!!studentToRenewLink} onOpenChange={(open) => !open && setStudentToRenewLink(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Gerar novo link</DialogTitle>
+            <DialogDescription>
+              O link atual de <strong>{studentToRenewLink?.nome}</strong> deixa de funcionar na hora, inclusive o
+              ícone na tela de início. O aluno vai precisar do novo link.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setStudentToRenewLink(null)}
+              disabled={renewLinkMutation.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => studentToRenewLink && renewLinkMutation.mutate(studentToRenewLink.id)}
+              disabled={renewLinkMutation.isPending}
+            >
+              {renewLinkMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Gerar novo link
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

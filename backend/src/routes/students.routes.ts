@@ -4,6 +4,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { notifyProfessors } from '../lib/notify-professors.js';
 import { computeStudentAlerts } from '../lib/student-alerts.js';
 import { todayBR } from '../lib/finance.js';
+import { randomUUID } from 'node:crypto';
 import type { Plan, Prisma, Student } from '@prisma/client';
 
 // Aquisição de plano vira receita Pendente (valor de tabela, editável) pra não
@@ -65,6 +66,16 @@ export async function studentsRoutes(app: FastifyInstance) {
     }).catch((error) => app.log.error({ err: error, studentId: student.id }, 'Falha ao notificar professor sobre novo aluno'));
 
     return reply.code(201).send(student);
+  });
+
+  // O link do portal é uma credencial permanente; se vazar, o professor gera
+  // outro e o antigo para de funcionar na hora.
+  app.post('/students/:id/regenerate-link', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const exists = await app.prisma.student.findUnique({ where: { id } });
+    if (!exists) return reply.code(404).send({ message: 'Aluno não encontrado' });
+
+    return app.prisma.student.update({ where: { id }, data: { access_token: randomUUID() } });
   });
 
   app.put('/students/:id', async (request, reply) => {

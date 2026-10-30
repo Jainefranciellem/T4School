@@ -4,7 +4,8 @@ import { comparePassword } from '../lib/hash.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../lib/jwt.js';
 
 export async function authRoutes(app: FastifyInstance) {
-  app.post('/auth/login', async (request, reply) => {
+  // 10 tentativas por minuto por IP: trava força bruta de senha.
+  app.post('/auth/login', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request, reply) => {
     const { email, password } = loginSchema.parse(request.body);
 
     const user = await app.prisma.user.findUnique({ where: { email } });
@@ -27,7 +28,7 @@ export async function authRoutes(app: FastifyInstance) {
     });
   });
 
-  app.post('/auth/refresh', async (request, reply) => {
+  app.post('/auth/refresh', { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (request, reply) => {
     const { refreshToken } = refreshSchema.parse(request.body);
 
     let payload: { sub: string };

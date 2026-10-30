@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
 import { ZodError } from 'zod';
 import { Prisma } from '@prisma/client';
 import { env } from './env.js';
@@ -16,9 +17,13 @@ import { blockedDatesRoutes } from './routes/blocked-dates.routes.js';
 import { financeRoutes } from './routes/finance.routes.js';
 
 export async function buildApp() {
-  const app = Fastify({ logger: true });
+  // trustProxy: atrás da Vercel/Render o IP real vem em X-Forwarded-For; sem isso
+  // o limite por IP contaria todo mundo como o IP do proxy.
+  const app = Fastify({ logger: true, trustProxy: true });
 
   await app.register(cors, { origin: env.CORS_ORIGIN });
+  // global: false — só vale nas rotas que declaram config.rateLimit (login e portal).
+  await app.register(rateLimit, { global: false });
   await app.register(prismaPlugin);
 
   // Must be set before registering route plugins: Fastify snapshots the error
