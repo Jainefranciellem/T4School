@@ -57,30 +57,12 @@ const Portal: React.FC = () => {
   const [bookingLocal, setBookingLocal] = useState('');
 
   // O manifest.json global tem start_url "/" (login do professor), então o
-  // app instalado pelo aluno abriria no login. Trocamos pelo manifest do
-  // portal, com start_url apontando pra página dele — assim o ícone na tela
-  // de início abre direto no portal, sem pedir e-mail e senha.
+  // app instalado pelo aluno abriria no login. Apontamos o <link> para
+  // /api/portal-manifest, que devolve start_url = /portal/<token>. Precisa
+  // ser uma URL real: o iOS ignora manifest em data: URI.
   useEffect(() => {
     if (!token) return;
-    const origin = window.location.origin;
-    const startUrl = `${origin}/portal/${token}`;
-    const manifest = {
-      id: startUrl,
-      name: 'Minhas Aulas',
-      short_name: 'Aulas',
-      description: 'Agenda de aulas do aluno',
-      start_url: startUrl,
-      scope: `${origin}/portal/`,
-      display: 'standalone',
-      orientation: 'portrait',
-      background_color: '#ffffff',
-      theme_color: '#ff6b00',
-      icons: [
-        { src: `${origin}/icon-192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
-        { src: `${origin}/icon-512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' },
-      ],
-    };
-    const href = `data:application/manifest+json,${encodeURIComponent(JSON.stringify(manifest))}`;
+    const href = `/api/portal-manifest?token=${encodeURIComponent(token)}`;
 
     let link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
     const previousHref = link?.getAttribute('href') ?? null;
